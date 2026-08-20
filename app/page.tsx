@@ -3,18 +3,36 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+type ExtractionMethod = "local" | "gemini";
+
 interface DocumentSummary {
   id: string;
   filename: string;
+  extraction_method: ExtractionMethod;
   page_count: number;
   uploaded_at: string;
 }
 
+const METHOD_LABEL: Record<ExtractionMethod, string> = {
+  local: "Lokal",
+  gemini: "Gemini",
+};
+
 export default function Home() {
   const [documents, setDocuments] = useState<DocumentSummary[]>([]);
+  const [mode, setMode] = useState<ExtractionMethod>("local");
   const [loading, setLoading] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!loading) return;
+    const interval = setInterval(() => {
+      setElapsedSeconds((s) => s + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [loading]);
 
   async function loadDocuments() {
     const res = await fetch("/api/documents");
@@ -40,10 +58,12 @@ export default function Home() {
     if (!file) return;
 
     setLoading(true);
+    setElapsedSeconds(0);
     setError(null);
 
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("mode", mode);
 
     try {
       const res = await fetch("/api/documents", {
@@ -77,7 +97,7 @@ export default function Home() {
 
         <form
           onSubmit={handleUpload}
-          className="flex flex-col gap-3 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
+          className="flex flex-col gap-4 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
         >
           <input
             ref={fileInputRef}
@@ -85,13 +105,56 @@ export default function Home() {
             accept="application/pdf"
             className="text-sm text-zinc-700 dark:text-zinc-300"
           />
+
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              Mode pembacaan
+            </span>
+            <div className="flex gap-4 text-sm">
+              <label className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
+                <input
+                  type="radio"
+                  name="mode"
+                  value="local"
+                  checked={mode === "local"}
+                  onChange={() => setMode("local")}
+                />
+                Lokal (teks asli PDF)
+              </label>
+              <label className="flex items-center gap-2 text-zinc-700 dark:text-zinc-300">
+                <input
+                  type="radio"
+                  name="mode"
+                  value="gemini"
+                  checked={mode === "gemini"}
+                  onChange={() => setMode("gemini")}
+                />
+                Gemini (PDF scan/gambar)
+              </label>
+            </div>
+            {mode === "gemini" && (
+              <p className="text-xs text-zinc-500">
+                Setiap halaman diproses sebagai gambar oleh AI, jadi bisa memakan waktu
+                1-3 menit (atau lebih) untuk dokumen banyak halaman. Mode Lokal jauh
+                lebih cepat kalau PDF-nya sudah berisi teks asli (bukan hasil scan).
+              </p>
+            )}
+          </div>
+
           <button
             type="submit"
             disabled={loading}
             className="w-fit rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-50 dark:hover:bg-[#ccc]"
           >
-            {loading ? "Mengupload..." : "Upload"}
+            {loading
+              ? `Memproses... (${elapsedSeconds}s)`
+              : "Upload"}
           </button>
+          {loading && mode === "gemini" && (
+            <p className="text-xs text-zinc-500">
+              Sedang membaca dengan Gemini, mohon tunggu, jangan tutup halaman ini...
+            </p>
+          )}
           {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
         </form>
 
@@ -110,7 +173,12 @@ export default function Home() {
                   className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm transition-colors hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-zinc-700"
                 >
                   <span className="text-black dark:text-zinc-50">{doc.filename}</span>
-                  <span className="text-zinc-500">{doc.page_count} halaman</span>
+                  <span className="flex items-center gap-3 text-zinc-500">
+                    <span className="rounded-full border border-zinc-200 px-2 py-0.5 text-xs dark:border-zinc-700">
+                      {METHOD_LABEL[doc.extraction_method]}
+                    </span>
+                    {doc.page_count} halaman
+                  </span>
                 </Link>
               </li>
             ))}

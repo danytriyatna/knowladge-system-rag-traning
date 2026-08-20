@@ -23,16 +23,29 @@ db.exec(`
     filename TEXT NOT NULL,
     stored_path TEXT NOT NULL,
     extracted_text TEXT NOT NULL,
+    extraction_method TEXT NOT NULL DEFAULT 'local',
     page_count INTEGER NOT NULL,
     uploaded_at TEXT NOT NULL
   )
 `);
+
+const existingColumns = db
+  .prepare("PRAGMA table_info(documents)")
+  .all() as { name: string }[];
+if (!existingColumns.some((c) => c.name === "extraction_method")) {
+  db.exec(
+    "ALTER TABLE documents ADD COLUMN extraction_method TEXT NOT NULL DEFAULT 'local'"
+  );
+}
+
+export type ExtractionMethod = "local" | "gemini";
 
 export interface DocumentRecord {
   id: string;
   filename: string;
   stored_path: string;
   extracted_text: string;
+  extraction_method: ExtractionMethod;
   page_count: number;
   uploaded_at: string;
 }

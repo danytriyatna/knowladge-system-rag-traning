@@ -4,13 +4,21 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+type ExtractionMethod = "local" | "gemini";
+
 interface DocumentDetail {
   id: string;
   filename: string;
   extracted_text: string;
+  extraction_method: ExtractionMethod;
   page_count: number;
   uploaded_at: string;
 }
+
+const METHOD_LABEL: Record<ExtractionMethod, string> = {
+  local: "Lokal",
+  gemini: "Gemini",
+};
 
 export default function DocumentPage() {
   const { id } = useParams<{ id: string }>();
@@ -49,7 +57,10 @@ export default function DocumentPage() {
                 <h1 className="text-xl font-semibold text-black dark:text-zinc-50">
                   {document.filename}
                 </h1>
-                <p className="text-sm text-zinc-500">
+                <p className="flex items-center gap-2 text-sm text-zinc-500">
+                  <span className="rounded-full border border-zinc-200 px-2 py-0.5 text-xs dark:border-zinc-700">
+                    {METHOD_LABEL[document.extraction_method]}
+                  </span>
                   {document.page_count} halaman &middot;{" "}
                   {new Date(document.uploaded_at).toLocaleString("id-ID")}
                 </p>
