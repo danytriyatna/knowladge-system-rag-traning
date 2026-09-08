@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 type ExtractionMethod = "local" | "gemini";
+type ViewTab = "text" | "pdf" | "chunks" | "embeddings";
 
 interface DocumentDetail {
   id: string;
@@ -13,6 +14,34 @@ interface DocumentDetail {
   extraction_method: ExtractionMethod;
   page_count: number;
   uploaded_at: string;
+}
+
+interface ChunkItem {
+  id: string;
+  chunk_index: number;
+  content: string;
+  char_count: number;
+}
+
+interface EmbeddingItem {
+  id: string;
+  chunk_id: string;
+  chunk_index: number;
+  model: string;
+  dimensions: number;
+  preview: number[];
+  created_at: string;
+}
+
+interface EmbeddingDetail {
+  id: string;
+  chunk_id: string;
+  chunk_index: number;
+  chunk_content: string;
+  model: string;
+  dimensions: number;
+  vector: number[];
+  created_at: string;
 }
 
 const METHOD_LABEL: Record<ExtractionMethod, string> = {
@@ -25,6 +54,22 @@ export default function DocumentPage() {
   const router = useRouter();
   const [document, setDocument] = useState<DocumentDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<ViewTab>("text");
+
+  const [chunks, setChunks] = useState<ChunkItem[] | null>(null);
+  const [chunkLoading, setChunkLoading] = useState(false);
+  const [chunkCreating, setChunkCreating] = useState(false);
+  const [chunkError, setChunkError] = useState<string | null>(null);
+
+  const [embeddings, setEmbeddings] = useState<EmbeddingItem[] | null>(null);
+  const [embeddingLoading, setEmbeddingLoading] = useState(false);
+  const [embeddingCreating, setEmbeddingCreating] = useState(false);
+  const [embeddingError, setEmbeddingError] = useState<string | null>(null);
+  const [embeddingElapsed, setEmbeddingElapsed] = useState(0);
+  const [expandedEmbeddingId, setExpandedEmbeddingId] = useState<string | null>(null);
+  const [embeddingDetails, setEmbeddingDetails] = useState<Record<string, EmbeddingDetail>>({});
+  const [embeddingDetailLoadingId, setEmbeddingDetailLoadingId] = useState<string | null>(null);
+  const [embeddingDetailError, setEmbeddingDetailError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`/api/documents/${id}`)
@@ -36,14 +81,122 @@ export default function DocumentPage() {
       .catch((err) => setError(err instanceof Error ? err.message : "Gagal memuat dokumen"));
   }, [id]);
 
+  useEffect(() => {
+    if (!embeddingCreating) return;
+    const interval = setInterval(() => {
+      setEmbeddingElapsed((s) => s + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [embeddingCreating]);
+
   async function handleDelete() {
     await fetch(`/api/documents/${id}`, { method: "DELETE" });
     router.push("/");
   }
 
+  async function loadChunks() {
+    setChunkLoading(true);
+    setChunkError(null);
+    try {
+      const res = await fetch(`/api/documents/${id}/chunks`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Gagal memuat chunk");
+      setChunks(data.chunks ?? []);
+    } catch (err) {
+      setChunkError(err instanceof Error ? err.message : "Gagal memuat chunk");
+    } finally {
+      setChunkLoading(false);
+    }
+  }
+
+  function handleViewChunks() {
+    setTab("chunks");
+    if (chunks === null) loadChunks();
+  }
+
+  async function handleCreateChunks() {
+    setChunkCreating(true);
+    setChunkError(null);
+    try {
+      const res = await fetch(`/api/documents/${id}/chunks`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Gagal membuat chunk");
+      setChunks(data.chunks ?? []);
+      setTab("chunks");
+      setEmbeddings(null);
+    } catch (err) {
+      setChunkError(err instanceof Error ? err.message : "Gagal membuat chunk");
+    } finally {
+      setChunkCreating(false);
+    }
+  }
+
+  async function loadEmbeddings() {
+    setEmbeddingLoading(true);
+    setEmbeddingError(null);
+    try {
+      const res = await fetch(`/api/documents/${id}/embeddings`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Gagal memuat embedding");
+      setEmbeddings(data.embeddings ?? []);
+    } catch (err) {
+      setEmbeddingError(err instanceof Error ? err.message : "Gagal memuat embedding");
+    } finally {
+      setEmbeddingLoading(false);
+    }
+  }
+
+  function handleViewEmbeddings() {
+    setTab("embeddings");
+    if (embeddings === null) loadEmbeddings();
+  }
+
+  async function handleCreateEmbeddings() {
+    setEmbeddingCreating(true);
+    setEmbeddingElapsed(0);
+    setEmbeddingError(null);
+    try {
+      const res = await fetch(`/api/documents/${id}/embeddings`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Gagal membuat embedding");
+      setEmbeddings(data.embeddings ?? []);
+      setTab("embeddings");
+    } catch (err) {
+      setEmbeddingError(err instanceof Error ? err.message : "Gagal membuat embedding");
+    } finally {
+      setEmbeddingCreating(false);
+    }
+  }
+
+  async function handleToggleEmbedding(embeddingId: string) {
+    if (expandedEmbeddingId === embeddingId) {
+      setExpandedEmbeddingId(null);
+      return;
+    }
+    setExpandedEmbeddingId(embeddingId);
+    if (embeddingDetails[embeddingId]) return;
+
+    setEmbeddingDetailLoadingId(embeddingId);
+    setEmbeddingDetailError(null);
+    try {
+      const res = await fetch(`/api/documents/${id}/embeddings/${embeddingId}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Gagal memuat detail embedding");
+      setEmbeddingDetails((prev) => ({ ...prev, [embeddingId]: data.embedding }));
+    } catch (err) {
+      setEmbeddingDetailError(
+        err instanceof Error ? err.message : "Gagal memuat detail embedding"
+      );
+    } finally {
+      setEmbeddingDetailLoadingId(null);
+    }
+  }
+
+  const fileUrl = `/api/documents/${id}/file`;
+
   return (
     <div className="flex flex-col flex-1 items-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-2xl flex-col gap-6 py-16 px-6">
+      <main className="flex flex-1 w-full max-w-4xl flex-col gap-6 py-16 px-6">
         <Link href="/" className="text-sm text-zinc-500 hover:underline">
           &larr; Kembali
         </Link>
@@ -52,7 +205,7 @@ export default function DocumentPage() {
 
         {document && (
           <>
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <h1 className="text-xl font-semibold text-black dark:text-zinc-50">
                   {document.filename}
@@ -65,16 +218,234 @@ export default function DocumentPage() {
                   {new Date(document.uploaded_at).toLocaleString("id-ID")}
                 </p>
               </div>
-              <button
-                onClick={handleDelete}
-                className="shrink-0 rounded-full border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
-              >
-                Hapus
-              </button>
+              <div className="flex shrink-0 flex-wrap gap-2">
+                <button
+                  onClick={handleCreateChunks}
+                  disabled={chunkCreating}
+                  className="rounded-full border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
+                >
+                  {chunkCreating ? "Membuat Chunk..." : "Buat Chunk"}
+                </button>
+                <button
+                  onClick={handleViewChunks}
+                  className="rounded-full border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
+                >
+                  Lihat Chunk
+                </button>
+                <button
+                  onClick={handleCreateEmbeddings}
+                  disabled={embeddingCreating}
+                  className="rounded-full border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
+                >
+                  {embeddingCreating
+                    ? `Membuat Embedding... (${embeddingElapsed}s)`
+                    : embeddings && embeddings.length > 0
+                      ? "Buat Ulang Embedding"
+                      : "Buat Embedding"}
+                </button>
+                <button
+                  onClick={handleViewEmbeddings}
+                  className="rounded-full border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
+                >
+                  Lihat Embedding
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="rounded-full border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
+                >
+                  Hapus
+                </button>
+              </div>
             </div>
-            <pre className="whitespace-pre-wrap rounded-lg border border-zinc-200 bg-white p-4 text-sm leading-6 text-zinc-800 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200">
-              {document.extracted_text || "(Tidak ada teks yang bisa diekstrak dari PDF ini)"}
-            </pre>
+
+            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800">
+              <div className="flex gap-1 overflow-x-auto">
+                <button
+                  onClick={() => setTab("text")}
+                  className={`shrink-0 px-4 py-2 text-sm font-medium transition-colors ${
+                    tab === "text"
+                      ? "border-b-2 border-black text-black dark:border-white dark:text-white"
+                      : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                  }`}
+                >
+                  Teks Narasi
+                </button>
+                <button
+                  onClick={() => setTab("pdf")}
+                  className={`shrink-0 px-4 py-2 text-sm font-medium transition-colors ${
+                    tab === "pdf"
+                      ? "border-b-2 border-black text-black dark:border-white dark:text-white"
+                      : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                  }`}
+                >
+                  PDF Asli
+                </button>
+                <button
+                  onClick={handleViewChunks}
+                  className={`shrink-0 px-4 py-2 text-sm font-medium transition-colors ${
+                    tab === "chunks"
+                      ? "border-b-2 border-black text-black dark:border-white dark:text-white"
+                      : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                  }`}
+                >
+                  Chunks{chunks ? ` (${chunks.length})` : ""}
+                </button>
+                <button
+                  onClick={handleViewEmbeddings}
+                  className={`shrink-0 px-4 py-2 text-sm font-medium transition-colors ${
+                    tab === "embeddings"
+                      ? "border-b-2 border-black text-black dark:border-white dark:text-white"
+                      : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                  }`}
+                >
+                  Embedding{embeddings ? ` (${embeddings.length})` : ""}
+                </button>
+              </div>
+              <a
+                href={fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 pb-2 pl-2 text-xs text-zinc-500 hover:underline"
+              >
+                Buka di tab baru &#8599;
+              </a>
+            </div>
+
+            {tab === "text" && (
+              <pre className="whitespace-pre-wrap rounded-lg border border-zinc-200 bg-white p-4 text-sm leading-6 text-zinc-800 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200">
+                {document.extracted_text || "(Tidak ada teks yang bisa diekstrak dari PDF ini)"}
+              </pre>
+            )}
+
+            {tab === "pdf" && (
+              <iframe
+                src={fileUrl}
+                title={document.filename}
+                className="h-[80vh] w-full rounded-lg border border-zinc-200 dark:border-zinc-800"
+              />
+            )}
+
+            {tab === "chunks" && (
+              <div className="flex flex-col gap-3">
+                {chunkError && (
+                  <p className="text-sm text-red-600 dark:text-red-400">{chunkError}</p>
+                )}
+                {chunkLoading && (
+                  <p className="text-sm text-zinc-500">Memuat chunk...</p>
+                )}
+                {!chunkLoading && chunks && chunks.length === 0 && (
+                  <p className="text-sm text-zinc-500">
+                    Belum ada chunk untuk dokumen ini. Klik &quot;Buat Chunk&quot; di atas
+                    untuk memprosesnya.
+                  </p>
+                )}
+                {!chunkLoading &&
+                  chunks &&
+                  chunks.map((chunk) => (
+                    <div
+                      key={chunk.id}
+                      className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
+                    >
+                      <div className="mb-2 flex items-center justify-between text-xs text-zinc-500">
+                        <span>Chunk #{chunk.chunk_index + 1}</span>
+                        <span>{chunk.char_count} karakter</span>
+                      </div>
+                      <p className="whitespace-pre-wrap text-sm leading-6 text-zinc-800 dark:text-zinc-200">
+                        {chunk.content}
+                      </p>
+                    </div>
+                  ))}
+              </div>
+            )}
+
+            {tab === "embeddings" && (
+              <div className="flex flex-col gap-3">
+                {embeddingError && (
+                  <p className="text-sm text-red-600 dark:text-red-400">{embeddingError}</p>
+                )}
+                {embeddingLoading && (
+                  <p className="text-sm text-zinc-500">Memuat embedding...</p>
+                )}
+                {!embeddingLoading && embeddings && embeddings.length === 0 && (
+                  <p className="text-sm text-zinc-500">
+                    Belum ada embedding untuk dokumen ini. Pastikan chunk sudah dibuat,
+                    lalu klik &quot;Buat Embedding&quot; di atas.
+                  </p>
+                )}
+                {!embeddingLoading && embeddings && embeddings.length > 0 && (
+                  <p className="text-xs text-zinc-500">
+                    Model: {embeddings[0].model} &middot; Dimensi: {embeddings[0].dimensions}
+                  </p>
+                )}
+                {!embeddingLoading &&
+                  embeddings &&
+                  embeddings.map((embedding) => {
+                    const isExpanded = expandedEmbeddingId === embedding.id;
+                    const detail = embeddingDetails[embedding.id];
+                    const isDetailLoading = embeddingDetailLoadingId === embedding.id;
+                    return (
+                      <div
+                        key={embedding.id}
+                        className="rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950"
+                      >
+                        <button
+                          onClick={() => handleToggleEmbedding(embedding.id)}
+                          className="flex w-full flex-col gap-2 p-4 text-left"
+                        >
+                          <div className="flex items-center justify-between text-xs text-zinc-500">
+                            <span className="flex items-center gap-2">
+                              <span
+                                className={`inline-block transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                              >
+                                &#9656;
+                              </span>
+                              Chunk #{embedding.chunk_index + 1}
+                            </span>
+                            <span>{new Date(embedding.created_at).toLocaleString("id-ID")}</span>
+                          </div>
+                          <p className="truncate font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                            [{embedding.preview.map((v) => v.toFixed(4)).join(", ")}, ...]
+                          </p>
+                        </button>
+
+                        {isExpanded && (
+                          <div className="flex flex-col gap-3 border-t border-zinc-200 p-4 dark:border-zinc-800">
+                            {isDetailLoading && (
+                              <p className="text-sm text-zinc-500">Memuat detail...</p>
+                            )}
+                            {!isDetailLoading && embeddingDetailError && (
+                              <p className="text-sm text-red-600 dark:text-red-400">
+                                {embeddingDetailError}
+                              </p>
+                            )}
+                            {!isDetailLoading && detail && (
+                              <>
+                                <div>
+                                  <h3 className="mb-1 text-xs font-medium text-zinc-500">
+                                    Teks chunk sumber
+                                  </h3>
+                                  <p className="whitespace-pre-wrap rounded-md bg-zinc-50 p-3 text-sm leading-6 text-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">
+                                    {detail.chunk_content}
+                                  </p>
+                                </div>
+                                <div>
+                                  <h3 className="mb-1 text-xs font-medium text-zinc-500">
+                                    Vector lengkap ({detail.dimensions} dimensi, model{" "}
+                                    {detail.model})
+                                  </h3>
+                                  <p className="max-h-56 overflow-y-auto whitespace-pre-wrap break-all rounded-md bg-zinc-50 p-3 font-mono text-xs text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400">
+                                    [{detail.vector.map((v) => v.toFixed(6)).join(", ")}]
+                                  </p>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
           </>
         )}
       </main>

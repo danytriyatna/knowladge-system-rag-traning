@@ -31,6 +31,8 @@ export async function DELETE(
     return NextResponse.json({ error: "Dokumen tidak ditemukan" }, { status: 404 });
   }
 
+  db.prepare("DELETE FROM embeddings WHERE document_id = ?").run(id);
+  db.prepare("DELETE FROM chunks WHERE document_id = ?").run(id);
   db.prepare("DELETE FROM documents WHERE id = ?").run(id);
   await fs.rm(document.stored_path, { force: true });
 
