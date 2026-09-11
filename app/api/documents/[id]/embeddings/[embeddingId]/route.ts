@@ -1,11 +1,21 @@
 import { NextResponse } from "next/server";
 import { db, type EmbeddingRecord } from "@/lib/db";
 import { bufferToVector } from "@/lib/embedding";
+import { requireAdmin, AuthError } from "@/lib/auth";
 
 export async function GET(
   _request: Request,
   ctx: RouteContext<"/api/documents/[id]/embeddings/[embeddingId]">
 ) {
+  try {
+    await requireAdmin();
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    throw err;
+  }
+
   const { id, embeddingId } = await ctx.params;
 
   const row = db

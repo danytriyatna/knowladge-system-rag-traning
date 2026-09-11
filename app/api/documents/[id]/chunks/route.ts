@@ -2,11 +2,22 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { db, type ChunkRecord, type DocumentRecord } from "@/lib/db";
 import { chunkText } from "@/lib/chunk";
+import { replaceRegulationMentions } from "@/lib/regulations";
+import { requireAdmin, AuthError } from "@/lib/auth";
 
 export async function GET(
   _request: Request,
   ctx: RouteContext<"/api/documents/[id]/chunks">
 ) {
+  try {
+    await requireAdmin();
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    throw err;
+  }
+
   const { id } = await ctx.params;
   const document = db
     .prepare("SELECT id FROM documents WHERE id = ?")
@@ -29,6 +40,15 @@ export async function POST(
   _request: Request,
   ctx: RouteContext<"/api/documents/[id]/chunks">
 ) {
+  try {
+    await requireAdmin();
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    throw err;
+  }
+
   const { id } = await ctx.params;
   const document = db
     .prepare("SELECT * FROM documents WHERE id = ?")
@@ -66,8 +86,12 @@ export async function POST(
   });
   replaceChunks(records);
 
+  // Panen rujukan peraturan/SNI dari chunk yang baru dibuat, supaya indeks
+  // rujukan selalu sinkron dengan chunk yang sedang berlaku.
+  const mentionCount = replaceRegulationMentions(id, records);
+
   return NextResponse.json(
-    { chunks: records, count: records.length },
+    { chunks: records, count: records.length, regulationMentions: mentionCount },
     { status: 201 }
   );
 }

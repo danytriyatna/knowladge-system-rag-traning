@@ -8,6 +8,7 @@ import {
   EMBEDDING_MODEL,
   EMBEDDING_DIMENSIONS,
 } from "@/lib/embedding";
+import { requireAdmin, AuthError } from "@/lib/auth";
 
 // Model embedding lokal didownload sekali di request pertama, dan inference
 // untuk dokumen dengan banyak chunk bisa makan waktu beberapa puluh detik.
@@ -43,6 +44,15 @@ export async function GET(
   _request: Request,
   ctx: RouteContext<"/api/documents/[id]/embeddings">
 ) {
+  try {
+    await requireAdmin();
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    throw err;
+  }
+
   const { id } = await ctx.params;
   const document = db
     .prepare("SELECT id FROM documents WHERE id = ?")
@@ -70,6 +80,15 @@ export async function POST(
   _request: Request,
   ctx: RouteContext<"/api/documents/[id]/embeddings">
 ) {
+  try {
+    await requireAdmin();
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    throw err;
+  }
+
   const { id } = await ctx.params;
   const document = db
     .prepare("SELECT id FROM documents WHERE id = ?")

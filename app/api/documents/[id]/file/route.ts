@@ -1,11 +1,21 @@
 import fs from "node:fs/promises";
 import { NextResponse } from "next/server";
 import { db, type DocumentRecord } from "@/lib/db";
+import { requireUser, AuthError } from "@/lib/auth";
 
 export async function GET(
   _request: Request,
   ctx: RouteContext<"/api/documents/[id]/file">
 ) {
+  try {
+    await requireUser();
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    throw err;
+  }
+
   const { id } = await ctx.params;
   const document = db
     .prepare("SELECT * FROM documents WHERE id = ?")

@@ -1,26 +1,219 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f7f7f5;
+  --surface: #ffffff;
+  --foreground: #1a1d24;
+  --muted: #6b6e76;
+  --border: #e5e4df;
+  --border-strong: #d4d2ca;
+  --accent: #3b4fd9;
+  --accent-foreground: #ffffff;
+  --accent-soft: #eceeff;
+  --accent-text: #2635a3;
+
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-text: var(--accent-text);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #101216;
+    --surface: #171a1f;
+    --foreground: #e7e6e1;
+    --muted: #9ba0a8;
+    --border: #262931;
+    --border-strong: #343841;
+    --accent: #8b9bff;
+    --accent-foreground: #10121c;
+    --accent-soft: #202544;
+    --accent-text: #b7c0ff;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+/* ---- Motion primitives (see AGENTS: emil-design-eng) ---- */
+
+/* Pressable feedback for buttons the user deliberately clicks (not for
+   high-frequency toggles/tabs — those rely on color state alone). */
+.press {
+  transition:
+    transform 150ms ease-out,
+    opacity 150ms ease-out,
+    background-color 150ms ease-out;
+}
+.press:active {
+  transform: scale(0.97);
+}
+
+/* Popovers/dropdowns anchor to their trigger, not the viewport center, and
+   never appear from nothing (scale(0)) — they start almost-visible. */
+.popover-panel {
+  transform-origin: top;
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  transition:
+    opacity 160ms var(--ease-out-strong),
+    transform 160ms var(--ease-out-strong);
+}
+.popover-panel {
+  @starting-style {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+}
+.popover-panel-right {
+  transform-origin: top right;
+}
+
+/* New chat messages / loading bubble ease in instead of popping in place. */
+.chat-bubble-enter {
+  animation: chat-bubble-in 220ms var(--ease-out-strong);
+}
+@keyframes chat-bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Inline error/status text — a jarring reason to fade in, not slide. */
+.fade-in {
+  opacity: 1;
+  transition: opacity 200ms ease;
+}
+.fade-in {
+  @starting-style {
+    opacity: 0;
+  }
+}
+
+/* Floating widget callout bubble — anchors to the trigger, bottom-right. */
+.callout-enter {
+  transform-origin: bottom right;
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  transition:
+    opacity 180ms var(--ease-out-strong),
+    transform 180ms var(--ease-out-strong);
+}
+.callout-enter {
+  @starting-style {
+    opacity: 0;
+    transform: scale(0.94) translateY(8px);
+  }
+}
+
+/* Brief attention ping on the widget button — runs a few times, then stops
+   (never loops forever; that would cross into "high frequency" territory). */
+.notify-ping {
+  animation: notify-ping 1.8s var(--ease-out-strong) 3;
+}
+@keyframes notify-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  70% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+/* Whole widget pops in from the corner on first mount, not a hard cut. */
+.widget-enter {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  transition:
+    opacity 260ms var(--ease-out-strong),
+    transform 260ms var(--ease-out-strong);
+}
+.widget-enter {
+  @starting-style {
+    opacity: 0;
+    transform: scale(0.8) translateY(16px);
+  }
+}
+
+/* Gentle bounce to catch the eye while the callout is up — a few cycles,
+   then settles (paired with .notify-ping, both stop once dismissed). */
+.widget-bounce {
+  animation: widget-bounce 1.4s var(--ease-in-out-strong) 2;
+}
+@keyframes widget-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  30% {
+    transform: translateY(-7px);
+  }
+  50% {
+    transform: translateY(0);
+  }
+  68% {
+    transform: translateY(-3px);
+  }
+}
+
+/* Speech-bubble tail pointing down at the trigger button. */
+.callout-enter::after {
+  content: "";
+  position: absolute;
+  right: 22px;
+  bottom: -6px;
+  width: 12px;
+  height: 12px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  transform: rotate(45deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .press,
+  .popover-panel,
+  .fade-in,
+  .callout-enter,
+  .widget-enter {
+    transition-duration: 0.01ms;
+  }
+  .chat-bubble-enter,
+  .notify-ping,
+  .widget-bounce {
+    animation: none;
+  }
 }

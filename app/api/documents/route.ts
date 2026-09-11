@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { db, pdfDir, type DocumentRecord, type ExtractionMethod } from "@/lib/db";
 import { extractText, getPageCount } from "@/lib/pdf";
 import { extractTextWithGemini } from "@/lib/gemini";
+import { requireUser, requireAdmin, logAudit, AuthError } from "@/lib/auth";
 
 const MAX_SIZE_BYTES = 25 * 1024 * 1024;
 
@@ -13,15 +14,36 @@ const MAX_SIZE_BYTES = 25 * 1024 * 1024;
 export const maxDuration = 300;
 
 export async function GET() {
+  try {
+    await requireUser();
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    throw err;
+  }
+
   const documents = db
     .prepare(
-      "SELECT id, filename, extraction_method, page_count, uploaded_at FROM documents ORDER BY uploaded_at DESC"
+      `SELECT id, filename, extraction_method, page_count, uploaded_at,
+              title, authors, doi, published_year, volume, issue_number, topics, source
+       FROM documents ORDER BY uploaded_at DESC`
     )
     .all();
   return NextResponse.json({ documents });
 }
 
 export async function POST(request: Request) {
+  let user;
+  try {
+    user = await requireAdmin();
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    throw err;
+  }
+
   const formData = await request.formData();
   const file = formData.get("file");
   const modeInput = formData.get("mode");
@@ -82,12 +104,32 @@ export async function POST(request: Request) {
     extraction_method: mode,
     page_count: pageCount,
     uploaded_at: new Date().toISOString(),
+    title: file.name.replace(/\.pdf$/i, ""),
+    authors: "[]",
+    abstract: "",
+    doi: "",
+    published_year: null,
+    volume: "",
+    issue_number: "",
+    topics: "[]",
+    source: "manual_upload",
+    ojs_article_id: null,
+    synced_at: null,
   };
 
   db.prepare(
-    `INSERT INTO documents (id, filename, stored_path, extracted_text, extraction_method, page_count, uploaded_at)
-     VALUES (@id, @filename, @stored_path, @extracted_text, @extraction_method, @page_count, @uploaded_at)`
+    `INSERT INTO documents (
+       id, filename, stored_path, extracted_text, extraction_method, page_count, uploaded_at,
+       title, authors, abstract, doi, published_year, volume, issue_number, topics, source,
+       ojs_article_id, synced_at
+     )
+     VALUES (
+       @id, @filename, @stored_path, @extracted_text, @extraction_method, @page_count, @uploaded_at,
+       @title, @authors, @abstract, @doi, @published_year, @volume, @issue_number, @topics, @source,
+       @ojs_article_id, @synced_at
+     )`
   ).run(record);
+  logAudit(user.id, "manual_upload", record.id, record.filename);
 
   return NextResponse.json(
     {

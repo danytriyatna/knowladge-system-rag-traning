@@ -149,59 +149,59 @@ export default function SkillsPanel() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-start justify-between gap-4">
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-muted">
           Kumpulan kemampuan analisis data &amp; pengambilan kesimpulan yang otomatis
           dipakai Chat AI setiap menjawab pertanyaan (skill yang nonaktif tidak dipakai).
         </p>
         <button
           onClick={openAddForm}
-          className="shrink-0 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
+          className="press shrink-0 rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:opacity-90"
         >
           + Tambah Skill
         </button>
       </div>
 
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {error && <p className="fade-in text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {showForm && (
         <form
           onSubmit={handleSubmit}
-          className="flex flex-col gap-3 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
+          className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4"
         >
-          <h3 className="text-sm font-medium text-black dark:text-zinc-50">
+          <h3 className="text-sm font-medium text-foreground">
             {editingId ? "Edit Skill" : "Skill Baru"}
           </h3>
           <input
             value={form.name}
             onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             placeholder="Nama skill, mis. Analisis Tren & Pola"
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200"
+            className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
           />
           <input
             value={form.description}
             onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
             placeholder="Deskripsi singkat (opsional)"
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200"
+            className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
           />
           <textarea
             value={form.instructions}
             onChange={(e) => setForm((f) => ({ ...f, instructions: e.target.value }))}
             placeholder="Instruksi lengkap: bagaimana AI harus menganalisis data / menarik kesimpulan untuk skill ini"
             rows={4}
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-800 outline-none focus:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-200"
+            className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
           />
           <div className="flex gap-2">
             <button
               type="submit"
               disabled={saving}
-              className="rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-50 dark:hover:bg-[#ccc]"
+              className="press rounded-full bg-accent px-5 py-2 text-sm font-medium text-accent-foreground hover:opacity-90 disabled:opacity-50"
             >
               {saving ? "Menyimpan..." : "Simpan"}
             </button>
             <button
               type="button"
               onClick={closeForm}
-              className="rounded-full border border-zinc-200 px-5 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
+              className="press rounded-full border border-border px-5 py-2 text-sm font-medium text-foreground hover:bg-background"
             >
               Batal
             </button>
@@ -209,25 +209,20 @@ export default function SkillsPanel() {
         </form>
       )}
 
-      {skills === null && <p className="text-sm text-zinc-500">Memuat skill...</p>}
-      {skills && skills.length === 0 && (
-        <p className="text-sm text-zinc-500">Belum ada skill.</p>
-      )}
+      {skills === null && <p className="text-sm text-muted">Memuat skill...</p>}
+      {skills && skills.length === 0 && <p className="text-sm text-muted">Belum ada skill.</p>}
 
       <ul className="flex flex-col gap-2">
         {skills?.map((skill) => {
           const isExpanded = expandedId === skill.id;
           return (
-            <li
-              key={skill.id}
-              className="rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950"
-            >
+            <li key={skill.id} className="rounded-xl border border-border bg-surface">
               <button
                 onClick={() => setExpandedId(isExpanded ? null : skill.id)}
                 className="flex w-full items-start justify-between gap-3 p-4 text-left"
               >
                 <div className="flex min-w-0 flex-col gap-0.5">
-                  <span className="flex items-center gap-2 text-sm font-medium text-black dark:text-zinc-50">
+                  <span className="flex items-center gap-2 text-sm font-medium text-foreground">
                     <span
                       className={`inline-block transition-transform ${isExpanded ? "rotate-90" : ""}`}
                     >
@@ -236,14 +231,14 @@ export default function SkillsPanel() {
                     {skill.name}
                   </span>
                   {skill.description && (
-                    <span className="text-xs text-zinc-500">{skill.description}</span>
+                    <span className="text-xs text-muted">{skill.description}</span>
                   )}
                 </div>
                 <span
                   className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${
                     skill.enabled
                       ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400"
-                      : "bg-zinc-100 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-500"
+                      : "bg-background text-muted"
                   }`}
                 >
                   {skill.enabled ? "Aktif" : "Nonaktif"}
@@ -251,26 +246,26 @@ export default function SkillsPanel() {
               </button>
 
               {isExpanded && (
-                <div className="flex flex-col gap-3 border-t border-zinc-200 p-4 dark:border-zinc-800">
-                  <p className="whitespace-pre-wrap rounded-md bg-zinc-50 p-3 text-sm leading-6 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
+                <div className="fade-in flex flex-col gap-3 border-t border-border p-4">
+                  <p className="whitespace-pre-wrap rounded-md bg-background p-3 text-sm leading-6">
                     {skill.instructions}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <button
                       onClick={() => handleToggleEnabled(skill)}
-                      className="rounded-full border border-zinc-200 px-4 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
+                      className="press rounded-full border border-border px-4 py-1.5 text-xs font-medium text-foreground hover:bg-background"
                     >
                       {skill.enabled ? "Nonaktifkan" : "Aktifkan"}
                     </button>
                     <button
                       onClick={() => openEditForm(skill)}
-                      className="rounded-full border border-zinc-200 px-4 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
+                      className="press rounded-full border border-border px-4 py-1.5 text-xs font-medium text-foreground hover:bg-background"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => handleDelete(skill.id)}
-                      className="rounded-full border border-red-200 px-4 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
+                      className="press rounded-full border border-red-200 px-4 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
                     >
                       Hapus
                     </button>

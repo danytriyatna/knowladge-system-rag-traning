@@ -41,6 +41,118 @@ export interface ChatAnswer {
   usedSourceNumbers: number[];
 }
 
+function buildKajianPrompt(question: string, chunks: RetrievedChunk[]): string {
+  const context = chunks
+    .map(
+      (chunk, i) =>
+        `[Sumber ${i + 1} — ${chunk.filename}, bagian ${chunk.chunk_index + 1}]\n${chunk.content}`
+    )
+    .join("\n\n");
+
+  return `Anda adalah asisten kajian yang mensintesis temuan dari beberapa naskah riset sekaligus untuk mendukung pengambilan keputusan teknis. Jawab HANYA berdasarkan potongan naskah (konteks) di bawah ini — konteks ini diambil lewat pencarian kemiripan otomatis, sebagian sumber BISA SAJA tidak benar-benar relevan meski ikut muncul di daftar.
+
+ATURAN WAJIB:
+1. Pecah jawaban menjadi beberapa POIN temuan (bukan satu paragraf panjang). Tiap poin adalah satu klaim/temuan spesifik yang didukung data di konteks.
+2. Setiap poin WAJIB mencantumkan nomor sumber (1-based, sesuai [Sumber N]) mana saja yang benar-benar mendukung klaim itu. Jangan gabungkan klaim dari topik berbeda ke satu poin yang sama.
+3. Dilarang keras mengarang, menebak, atau mensintesis temuan yang tidak benar-benar didukung teks di konteks (jangan berhalusinasi). Kalau tidak ada satu pun sumber yang relevan dengan pertanyaan, kembalikan daftar poin kosong dan tulis di summary bahwa bukti tidak ditemukan.
+4. Tulis satu ringkasan singkat (summary) di awal yang merangkum keseluruhan kajian dalam 1-3 kalimat, bahasa Indonesia natural.
+5. Jangan menyebut "Sumber 1/2/3" di dalam teks poin/summary — sebutkan nama dokumennya kalau perlu, penomoran sumber hanya untuk field sitasi terstruktur.
+
+KONTEKS:
+${context}
+
+PERTANYAAN KEBIJAKAN:
+${question}`;
+}
+
+export interface KajianPoint {
+  claim: string;
+  sourceNumbers: number[];
+}
+
+export interface KajianAnswer {
+  summary: string;
+  points: KajianPoint[];
+}
+
+export async function synthesizeKajian(
+  question: string,
+  chunks: RetrievedChunk[]
+): Promise<KajianAnswer> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY belum diset di environment");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+  const response = await ai.models.generateContent({
+    model: MODEL,
+    contents: buildKajianPrompt(question, chunks),
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          summary: {
+            type: Type.STRING,
+            description: "Ringkasan kajian 1-3 kalimat, bahasa Indonesia natural.",
+          },
+          points: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                claim: {
+                  type: Type.STRING,
+                  description: "Satu klaim/temuan spesifik berdasarkan konteks.",
+                },
+                source_numbers: {
+                  type: Type.ARRAY,
+                  items: { type: Type.INTEGER },
+                  description: "Nomor sumber (1-based) yang benar-benar mendukung klaim ini.",
+                },
+              },
+              required: ["claim", "source_numbers"],
+            },
+          },
+        },
+        required: ["summary", "points"],
+      },
+    },
+  });
+
+  const text = response.text;
+  if (!text) {
+    throw new Error("Gemini tidak mengembalikan jawaban");
+  }
+
+  let parsed: { summary?: unknown; points?: unknown };
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    throw new Error("Gemini mengembalikan format jawaban yang tidak valid");
+  }
+
+  if (typeof parsed.summary !== "string" || !Array.isArray(parsed.points)) {
+    throw new Error("Gemini mengembalikan format jawaban yang tidak valid");
+  }
+
+  const points: KajianPoint[] = parsed.points
+    .filter(
+      (p): p is { claim: unknown; source_numbers: unknown } =>
+        typeof p === "object" && p !== null
+    )
+    .map((p) => ({
+      claim: typeof p.claim === "string" ? p.claim : "",
+      sourceNumbers: Array.isArray(p.source_numbers)
+        ? p.source_numbers.filter((n): n is number => typeof n === "number")
+        : [],
+    }))
+    .filter((p) => p.claim.trim().length > 0);
+
+  return { summary: parsed.summary.trim(), points };
+}
+
 export async function answerFromContext(
   question: string,
   chunks: RetrievedChunk[]

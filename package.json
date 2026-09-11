@@ -6,13 +6,18 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@google/genai": "^2.18.0",
     "@huggingface/transformers": "^4.2.0",
     "better-sqlite3": "^13.0.3",
+    "fast-xml-parser": "^5.11.1",
+    "mammoth": "^1.12.2",
     "next": "16.3.1",
+    "pdf-lib": "^1.17.1",
     "pdf-parse": "^2.4.5",
     "react": "19.2.8",
     "react-dom": "19.2.8"
@@ -27,7 +32,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^1.6.1"
   },
   "allowScripts": {
     "better-sqlite3@13.0.3": true,

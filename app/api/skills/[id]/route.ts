@@ -1,10 +1,20 @@
 import { NextResponse } from "next/server";
 import { getSkill, updateSkill, deleteSkill } from "@/lib/skills";
+import { requireAdmin, AuthError } from "@/lib/auth";
 
 export async function PUT(
   request: Request,
   ctx: RouteContext<"/api/skills/[id]">
 ) {
+  try {
+    await requireAdmin();
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    throw err;
+  }
+
   const { id } = await ctx.params;
   const existing = getSkill(id);
   if (!existing) {
@@ -33,6 +43,15 @@ export async function DELETE(
   _request: Request,
   ctx: RouteContext<"/api/skills/[id]">
 ) {
+  try {
+    await requireAdmin();
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    throw err;
+  }
+
   const { id } = await ctx.params;
   deleteSkill(id);
   return NextResponse.json({ ok: true });

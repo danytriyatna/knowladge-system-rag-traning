@@ -1,11 +1,29 @@
 import { NextResponse } from "next/server";
 import { listSkills, createSkill } from "@/lib/skills";
+import { requireAdmin, AuthError } from "@/lib/auth";
 
 export async function GET() {
+  try {
+    await requireAdmin();
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    throw err;
+  }
   return NextResponse.json({ skills: listSkills() });
 }
 
 export async function POST(request: Request) {
+  try {
+    await requireAdmin();
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    throw err;
+  }
+
   const body = await request.json().catch(() => null);
   const name = typeof body?.name === "string" ? body.name.trim() : "";
   const description = typeof body?.description === "string" ? body.description.trim() : "";

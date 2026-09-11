@@ -1,11 +1,21 @@
 import fs from "node:fs/promises";
 import { NextResponse } from "next/server";
 import { db, type DocumentRecord } from "@/lib/db";
+import { requireUser, requireAdmin, logAudit, AuthError } from "@/lib/auth";
 
 export async function GET(
   _request: Request,
   ctx: RouteContext<"/api/documents/[id]">
 ) {
+  try {
+    await requireUser();
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    throw err;
+  }
+
   const { id } = await ctx.params;
   const document = db
     .prepare("SELECT * FROM documents WHERE id = ?")
@@ -22,6 +32,16 @@ export async function DELETE(
   _request: Request,
   ctx: RouteContext<"/api/documents/[id]">
 ) {
+  let user;
+  try {
+    user = await requireAdmin();
+  } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    throw err;
+  }
+
   const { id } = await ctx.params;
   const document = db
     .prepare("SELECT * FROM documents WHERE id = ?")
@@ -35,6 +55,7 @@ export async function DELETE(
   db.prepare("DELETE FROM chunks WHERE document_id = ?").run(id);
   db.prepare("DELETE FROM documents WHERE id = ?").run(id);
   await fs.rm(document.stored_path, { force: true });
+  logAudit(user.id, "delete_document", id, document.filename);
 
   return NextResponse.json({ ok: true });
 }
