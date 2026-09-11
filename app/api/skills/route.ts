@@ -11,7 +11,7 @@ export async function GET() {
     }
     throw err;
   }
-  return NextResponse.json({ skills: listSkills() });
+  return NextResponse.json({ skills: await listSkills() });
 }
 
 export async function POST(request: Request) {
@@ -37,6 +37,6 @@ export async function POST(request: Request) {
     );
   }
 
-  const skill = createSkill({ name, description, instructions });
+  const skill = await createSkill({ name, description, instructions });
   return NextResponse.json({ skill }, { status: 201 });
 }

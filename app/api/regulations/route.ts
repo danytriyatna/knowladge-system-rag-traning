@@ -38,7 +38,7 @@ export async function GET(request: Request) {
   const view = url.searchParams.get("view");
 
   if (view === "outdated") {
-    const outdated = findOutdatedEditions();
+    const outdated = await findOutdatedEditions();
     return NextResponse.json({
       outdated,
       catatan:
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
 
   const nomor = url.searchParams.get("nomor");
   if (nomor) {
-    const detail = getRegulationDetail(nomor);
+    const detail = await getRegulationDetail(nomor);
     if (!detail) {
       return NextResponse.json(
         { error: "Peraturan tidak ditemukan di indeks rujukan" },
@@ -60,13 +60,13 @@ export async function GET(request: Request) {
 
   if (documentId) {
     return NextResponse.json({
-      regulations: listRegulationsForDocument(documentId),
+      regulations: await listRegulationsForDocument(documentId),
     });
   }
 
   const limitParam = Number(url.searchParams.get("limit"));
   const limit = Number.isInteger(limitParam) && limitParam > 0 ? limitParam : 100;
-  return NextResponse.json({ regulations: listRegulations(limit) });
+  return NextResponse.json({ regulations: await listRegulations(limit) });
 }
 
 /** Simpan tautan sumber resmi (JDIH) untuk satu peraturan. */
@@ -91,19 +91,19 @@ export async function PUT(request: Request) {
 
   // URL kosong berarti menghapus tautan yang sudah ada.
   if (!url) {
-    deleteRegulationLink(nomor);
-    logAudit(user.id, "delete_regulation_link", nomor);
+    await deleteRegulationLink(nomor);
+    await logAudit(user.id, "delete_regulation_link", nomor);
     return NextResponse.json({ link: null });
   }
 
   try {
-    const link = upsertRegulationLink({
+    const link = await upsertRegulationLink({
       nomor_lengkap: nomor,
       url,
       judul_resmi: judulResmi,
       curated_by: user.id,
     });
-    logAudit(user.id, "set_regulation_link", nomor, url);
+    await logAudit(user.id, "set_regulation_link", nomor, url);
     return NextResponse.json({ link });
   } catch (err) {
     return NextResponse.json(
@@ -124,8 +124,8 @@ export async function POST() {
     throw err;
   }
 
-  const result = backfillRegulationMentions();
-  logAudit(
+  const result = await backfillRegulationMentions();
+  await logAudit(
     user.id,
     "backfill_regulation_mentions",
     undefined,

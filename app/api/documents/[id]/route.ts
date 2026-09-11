@@ -1,6 +1,6 @@
-import fs from "node:fs/promises";
 import { NextResponse } from "next/server";
-import { db, type DocumentRecord } from "@/lib/db";
+import { sql, type DocumentRecord } from "@/lib/db";
+import { deletePdf } from "@/lib/storage";
 import { requireUser, requireAdmin, logAudit, AuthError } from "@/lib/auth";
 
 export async function GET(
@@ -17,9 +17,7 @@ export async function GET(
   }
 
   const { id } = await ctx.params;
-  const document = db
-    .prepare("SELECT * FROM documents WHERE id = ?")
-    .get(id) as DocumentRecord | undefined;
+  const [document] = await sql<DocumentRecord[]>`SELECT * FROM documents WHERE id = ${id}`;
 
   if (!document) {
     return NextResponse.json({ error: "Dokumen tidak ditemukan" }, { status: 404 });
@@ -43,19 +41,19 @@ export async function DELETE(
   }
 
   const { id } = await ctx.params;
-  const document = db
-    .prepare("SELECT * FROM documents WHERE id = ?")
-    .get(id) as DocumentRecord | undefined;
+  const [document] = await sql<DocumentRecord[]>`SELECT * FROM documents WHERE id = ${id}`;
 
   if (!document) {
     return NextResponse.json({ error: "Dokumen tidak ditemukan" }, { status: 404 });
   }
 
-  db.prepare("DELETE FROM embeddings WHERE document_id = ?").run(id);
-  db.prepare("DELETE FROM chunks WHERE document_id = ?").run(id);
-  db.prepare("DELETE FROM documents WHERE id = ?").run(id);
-  await fs.rm(document.stored_path, { force: true });
-  logAudit(user.id, "delete_document", id, document.filename);
+  await sql`DELETE FROM embeddings WHERE document_id = ${id}`;
+  await sql`DELETE FROM chunks WHERE document_id = ${id}`;
+  await sql`DELETE FROM documents WHERE id = ${id}`;
+  await deletePdf(document.stored_path).catch(() => {
+    // File mungkin sudah tidak ada (mis. dokumen lama sebelum migrasi Storage) — jangan gagalkan penghapusan record karena ini.
+  });
+  await logAudit(user.id, "delete_document", id, document.filename);
 
   return NextResponse.json({ ok: true });
 }

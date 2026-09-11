@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db, type ChatHistoryRecord } from "@/lib/db";
+import { sql, type ChatHistoryRecord } from "@/lib/db";
 import { requireUser, AuthError } from "@/lib/auth";
 
 export async function GET(
@@ -17,9 +17,9 @@ export async function GET(
   }
 
   const { id } = await ctx.params;
-  const row = db
-    .prepare("SELECT * FROM chat_history WHERE id = ? AND user_id = ?")
-    .get(id, user.id) as ChatHistoryRecord | undefined;
+  const [row] = await sql<ChatHistoryRecord[]>`
+    SELECT * FROM chat_history WHERE id = ${id} AND user_id = ${user.id}
+  `;
 
   if (!row) {
     return NextResponse.json({ error: "Riwayat chat tidak ditemukan" }, { status: 404 });
@@ -54,6 +54,6 @@ export async function DELETE(
   }
 
   const { id } = await ctx.params;
-  db.prepare("DELETE FROM chat_history WHERE id = ? AND user_id = ?").run(id, user.id);
+  await sql`DELETE FROM chat_history WHERE id = ${id} AND user_id = ${user.id}`;
   return NextResponse.json({ ok: true });
 }

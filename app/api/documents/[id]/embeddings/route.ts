@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
-import { db, type ChunkRecord, type EmbeddingRecord } from "@/lib/db";
+import { sql, type ChunkRecord, type EmbeddingRecord } from "@/lib/db";
 import {
   embedTexts,
-  vectorToBuffer,
-  bufferToVector,
+  vectorToPgLiteral,
+  parsePgVector,
   EMBEDDING_MODEL,
   EMBEDDING_DIMENSIONS,
 } from "@/lib/embedding";
@@ -28,7 +28,7 @@ function toSummary(
   embedding: EmbeddingRecord,
   chunkIndex: number
 ): EmbeddingSummary {
-  const vector = bufferToVector(embedding.vector);
+  const vector = parsePgVector(embedding.vector);
   return {
     id: embedding.id,
     chunk_id: embedding.chunk_id,
@@ -54,23 +54,19 @@ export async function GET(
   }
 
   const { id } = await ctx.params;
-  const document = db
-    .prepare("SELECT id FROM documents WHERE id = ?")
-    .get(id) as { id: string } | undefined;
+  const [document] = await sql<{ id: string }[]>`SELECT id FROM documents WHERE id = ${id}`;
 
   if (!document) {
     return NextResponse.json({ error: "Dokumen tidak ditemukan" }, { status: 404 });
   }
 
-  const rows = db
-    .prepare(
-      `SELECT e.*, c.chunk_index as chunk_index
-       FROM embeddings e
-       JOIN chunks c ON c.id = e.chunk_id
-       WHERE e.document_id = ?
-       ORDER BY c.chunk_index ASC`
-    )
-    .all(id) as (EmbeddingRecord & { chunk_index: number })[];
+  const rows = await sql<(EmbeddingRecord & { chunk_index: number })[]>`
+    SELECT e.*, c.chunk_index as chunk_index
+    FROM embeddings e
+    JOIN chunks c ON c.id = e.chunk_id
+    WHERE e.document_id = ${id}
+    ORDER BY c.chunk_index ASC
+  `;
 
   const embeddings = rows.map((row) => toSummary(row, row.chunk_index));
   return NextResponse.json({ embeddings });
@@ -90,17 +86,15 @@ export async function POST(
   }
 
   const { id } = await ctx.params;
-  const document = db
-    .prepare("SELECT id FROM documents WHERE id = ?")
-    .get(id) as { id: string } | undefined;
+  const [document] = await sql<{ id: string }[]>`SELECT id FROM documents WHERE id = ${id}`;
 
   if (!document) {
     return NextResponse.json({ error: "Dokumen tidak ditemukan" }, { status: 404 });
   }
 
-  const chunks = db
-    .prepare("SELECT * FROM chunks WHERE document_id = ? ORDER BY chunk_index ASC")
-    .all(id) as ChunkRecord[];
+  const chunks = await sql<ChunkRecord[]>`
+    SELECT * FROM chunks WHERE document_id = ${id} ORDER BY chunk_index ASC
+  `;
 
   if (chunks.length === 0) {
     return NextResponse.json(
@@ -129,19 +123,19 @@ export async function POST(
     document_id: id,
     model: EMBEDDING_MODEL,
     dimensions: EMBEDDING_DIMENSIONS,
-    vector: vectorToBuffer(vectors[i]),
+    vector: vectorToPgLiteral(vectors[i]),
     created_at: now,
   }));
 
-  const replaceEmbeddings = db.transaction((embeddingRecords: EmbeddingRecord[]) => {
-    db.prepare("DELETE FROM embeddings WHERE document_id = ?").run(id);
-    const insert = db.prepare(
-      `INSERT INTO embeddings (id, chunk_id, document_id, model, dimensions, vector, created_at)
-       VALUES (@id, @chunk_id, @document_id, @model, @dimensions, @vector, @created_at)`
-    );
-    for (const record of embeddingRecords) insert.run(record);
+  await sql.begin(async (tx) => {
+    await tx`DELETE FROM embeddings WHERE document_id = ${id}`;
+    for (const record of records) {
+      await tx`
+        INSERT INTO embeddings (id, chunk_id, document_id, model, dimensions, vector, created_at)
+        VALUES (${record.id}, ${record.chunk_id}, ${record.document_id}, ${record.model}, ${record.dimensions}, ${record.vector}::vector, ${record.created_at})
+      `;
+    }
   });
-  replaceEmbeddings(records);
 
   const summaries = records.map((record, i) =>
     toSummary(record, chunks[i].chunk_index)

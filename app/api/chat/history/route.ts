@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db, type ChatHistoryRecord } from "@/lib/db";
+import { sql, type ChatHistoryRecord } from "@/lib/db";
 import { requireUser, AuthError } from "@/lib/auth";
 
 export async function GET() {
@@ -13,14 +13,11 @@ export async function GET() {
     throw err;
   }
 
-  const rows = db
-    .prepare(
-      "SELECT id, question, created_at, mode, evidence_strength FROM chat_history WHERE user_id = ? ORDER BY created_at DESC"
-    )
-    .all(user.id) as Pick<
-    ChatHistoryRecord,
-    "id" | "question" | "created_at" | "mode" | "evidence_strength"
-  >[];
+  const rows = await sql<
+    Pick<ChatHistoryRecord, "id" | "question" | "created_at" | "mode" | "evidence_strength">[]
+  >`
+    SELECT id, question, created_at, mode, evidence_strength FROM chat_history WHERE user_id = ${user.id} ORDER BY created_at DESC
+  `;
 
   return NextResponse.json({ history: rows });
 }

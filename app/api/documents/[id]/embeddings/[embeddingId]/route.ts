@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { db, type EmbeddingRecord } from "@/lib/db";
-import { bufferToVector } from "@/lib/embedding";
+import { sql, type EmbeddingRecord } from "@/lib/db";
+import { parsePgVector } from "@/lib/embedding";
 import { requireAdmin, AuthError } from "@/lib/auth";
 
 export async function GET(
@@ -18,16 +18,12 @@ export async function GET(
 
   const { id, embeddingId } = await ctx.params;
 
-  const row = db
-    .prepare(
-      `SELECT e.*, c.chunk_index as chunk_index, c.content as chunk_content
-       FROM embeddings e
-       JOIN chunks c ON c.id = e.chunk_id
-       WHERE e.id = ? AND e.document_id = ?`
-    )
-    .get(embeddingId, id) as
-    | (EmbeddingRecord & { chunk_index: number; chunk_content: string })
-    | undefined;
+  const [row] = await sql<(EmbeddingRecord & { chunk_index: number; chunk_content: string })[]>`
+    SELECT e.*, c.chunk_index as chunk_index, c.content as chunk_content
+    FROM embeddings e
+    JOIN chunks c ON c.id = e.chunk_id
+    WHERE e.id = ${embeddingId} AND e.document_id = ${id}
+  `;
 
   if (!row) {
     return NextResponse.json({ error: "Embedding tidak ditemukan" }, { status: 404 });
@@ -41,7 +37,7 @@ export async function GET(
       chunk_content: row.chunk_content,
       model: row.model,
       dimensions: row.dimensions,
-      vector: bufferToVector(row.vector),
+      vector: parsePgVector(row.vector),
       created_at: row.created_at,
     },
   });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { db } from "@/lib/db";
-import { embedTexts, bufferToVector, cosineSimilarity } from "@/lib/embedding";
+import { sql } from "@/lib/db";
+import { embedTexts, parsePgVector, cosineSimilarity } from "@/lib/embedding";
 import { searchSimilarChunks, type RetrievedChunk } from "@/lib/rag";
 import { synthesizeKajian } from "@/lib/chat";
 import { evidenceStrengthFor, combineWeakestLink } from "@/lib/evidence";
@@ -19,21 +19,19 @@ const hasApiKey = Boolean(process.env.GEMINI_API_KEY);
 const describeIfKey = hasApiKey ? describe : describe.skip;
 
 /** Chunk paling relevan (cosine tertinggi) dari SATU dokumen spesifik. */
-function topChunkOfDocument(documentId: string, queryVector: number[]): RetrievedChunk | null {
-  const rows = db
-    .prepare(
-      `SELECT c.chunk_index, c.content, e.vector, d.filename
-       FROM chunks c
-       JOIN embeddings e ON e.chunk_id = c.id
-       JOIN documents d ON d.id = c.document_id
-       WHERE c.document_id = ?`
-    )
-    .all(documentId) as { chunk_index: number; content: string; vector: Buffer; filename: string }[];
+async function topChunkOfDocument(documentId: string, queryVector: number[]): Promise<RetrievedChunk | null> {
+  const rows = await sql<{ chunk_index: number; content: string; vector: string; filename: string }[]>`
+    SELECT c.chunk_index, c.content, e.vector, d.filename
+    FROM chunks c
+    JOIN embeddings e ON e.chunk_id = c.id
+    JOIN documents d ON d.id = c.document_id
+    WHERE c.document_id = ${documentId}
+  `;
 
   let best: RetrievedChunk | null = null;
   let bestScore = -Infinity;
   for (const row of rows) {
-    const score = cosineSimilarity(queryVector, bufferToVector(row.vector));
+    const score = cosineSimilarity(queryVector, parsePgVector(row.vector));
     if (score > bestScore) {
       bestScore = score;
       best = {
@@ -52,10 +50,10 @@ function topChunkOfDocument(documentId: string, queryVector: number[]): Retrieve
 async function runKajian(question: string, curatedDocumentIds?: string[]) {
   const [queryVector] = await embedTexts([question]);
   const chunks = curatedDocumentIds
-    ? curatedDocumentIds
-        .map((id) => topChunkOfDocument(id, queryVector))
-        .filter((c): c is RetrievedChunk => c !== null)
-    : searchSimilarChunks(queryVector, question, ...TOP_K_KAJIAN);
+    ? (await Promise.all(curatedDocumentIds.map((id) => topChunkOfDocument(id, queryVector)))).filter(
+        (c): c is RetrievedChunk => c !== null
+      )
+    : await searchSimilarChunks(queryVector, question, ...TOP_K_KAJIAN);
   const kajian = await synthesizeKajian(question, chunks);
 
   const validPoints = kajian.points.filter((p) => p.sourceNumbers.length > 0);

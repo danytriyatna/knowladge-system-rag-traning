@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { GoogleGenAI, Type } from "@google/genai";
-import { db, type ClaimKind, type ClaimRecord } from "./db";
+import { sql, type ClaimKind, type ClaimRecord } from "./db";
 
 const MODEL = process.env.GEMINI_CHAT_MODEL ?? "gemini-3.1-flash-lite";
 
@@ -28,16 +28,16 @@ export interface GapCandidate {
 }
 
 /** Chunk yang lolos penyaring kandidat, dibatasi satu dokumen bila diminta. */
-export function findGapCandidates(documentId?: string): GapCandidate[] {
-  const rows = db
-    .prepare(
-      documentId
-        ? `SELECT id as chunk_id, document_id, chunk_index, content FROM chunks
-           WHERE document_id = ? ORDER BY chunk_index`
-        : `SELECT id as chunk_id, document_id, chunk_index, content FROM chunks
-           ORDER BY document_id, chunk_index`
-    )
-    .all(...(documentId ? [documentId] : [])) as GapCandidate[];
+export async function findGapCandidates(documentId?: string): Promise<GapCandidate[]> {
+  const rows = documentId
+    ? await sql<GapCandidate[]>`
+        SELECT id as chunk_id, document_id, chunk_index, content FROM chunks
+        WHERE document_id = ${documentId} ORDER BY chunk_index
+      `
+    : await sql<GapCandidate[]>`
+        SELECT id as chunk_id, document_id, chunk_index, content FROM chunks
+        ORDER BY document_id, chunk_index
+      `;
 
   return rows.filter((r) => isGapCandidate(r.content));
 }
@@ -196,19 +196,15 @@ export async function harvestGaps(options?: {
   documentId?: string;
   limit?: number;
 }): Promise<HarvestOutcome> {
-  const candidates = findGapCandidates(options?.documentId);
+  const candidates = await findGapCandidates(options?.documentId);
   const selected = options?.limit ? candidates.slice(0, options.limit) : candidates;
 
   const touchedDocuments = new Set(selected.map((c) => c.document_id));
-  const remove = db.prepare(
-    "DELETE FROM claims WHERE document_id = ? AND jenis IN ('keterbatasan','saran_lanjutan')"
-  );
-  for (const documentId of touchedDocuments) remove.run(documentId);
-
-  const insert = db.prepare(
-    `INSERT INTO claims (id, document_id, chunk_id, jenis, teks, kutipan, topik, created_at)
-     VALUES (@id, @document_id, @chunk_id, @jenis, @teks, @kutipan, @topik, @created_at)`
-  );
+  for (const documentId of touchedDocuments) {
+    await sql`
+      DELETE FROM claims WHERE document_id = ${documentId} AND jenis IN ('keterbatasan','saran_lanjutan')
+    `;
+  }
 
   let claims = 0;
   let processed = 0;
@@ -222,16 +218,10 @@ export async function harvestGaps(options?: {
       const gaps = await extractWithRetry(candidate.content);
       const now = new Date().toISOString();
       for (const gap of gaps) {
-        insert.run({
-          id: randomUUID(),
-          document_id: candidate.document_id,
-          chunk_id: candidate.chunk_id,
-          jenis: gap.jenis,
-          teks: gap.teks,
-          kutipan: gap.kutipan,
-          topik: gap.topik,
-          created_at: now,
-        });
+        await sql`
+          INSERT INTO claims (id, document_id, chunk_id, jenis, teks, kutipan, topik, created_at)
+          VALUES (${randomUUID()}, ${candidate.document_id}, ${candidate.chunk_id}, ${gap.jenis}, ${gap.teks}, ${gap.kutipan}, ${gap.topik}, ${now})
+        `;
         claims++;
       }
       processed++;
@@ -265,46 +255,31 @@ export interface GapFilters {
   year?: number;
 }
 
-export function listGapClaims(filters?: GapFilters): GapClaim[] {
-  const conditions = ["c.jenis IN ('keterbatasan','saran_lanjutan')"];
-  const params: unknown[] = [];
+export async function listGapClaims(filters?: GapFilters): Promise<GapClaim[]> {
+  const jenisFragment = filters?.jenis ? sql`AND c.jenis = ${filters.jenis}` : sql``;
+  const yearFragment = filters?.year ? sql`AND d.published_year = ${filters.year}` : sql``;
+  const searchFragment = filters?.search
+    ? sql`AND (LOWER(c.teks) LIKE ${`%${filters.search.toLowerCase()}%`} OR LOWER(c.topik) LIKE ${`%${filters.search.toLowerCase()}%`} OR LOWER(d.title) LIKE ${`%${filters.search.toLowerCase()}%`})`
+    : sql``;
 
-  if (filters?.jenis) {
-    conditions.push("c.jenis = ?");
-    params.push(filters.jenis);
-  }
-  if (filters?.year) {
-    conditions.push("d.published_year = ?");
-    params.push(filters.year);
-  }
-  if (filters?.search) {
-    conditions.push("(LOWER(c.teks) LIKE ? OR LOWER(c.topik) LIKE ? OR LOWER(d.title) LIKE ?)");
-    const like = `%${filters.search.toLowerCase()}%`;
-    params.push(like, like, like);
-  }
-
-  return db
-    .prepare(
-      `SELECT c.*, d.filename, d.title, d.published_year, ch.chunk_index
-       FROM claims c
-       JOIN documents d ON d.id = c.document_id
-       JOIN chunks ch ON ch.id = c.chunk_id
-       WHERE ${conditions.join(" AND ")}
-       ORDER BY d.published_year DESC, d.title ASC`
-    )
-    .all(...params) as GapClaim[];
+  return sql<GapClaim[]>`
+    SELECT c.*, d.filename, d.title, d.published_year, ch.chunk_index
+    FROM claims c
+    JOIN documents d ON d.id = c.document_id
+    JOIN chunks ch ON ch.id = c.chunk_id
+    WHERE c.jenis IN ('keterbatasan','saran_lanjutan') ${jenisFragment} ${yearFragment} ${searchFragment}
+    ORDER BY d.published_year DESC, d.title ASC
+  `;
 }
 
-export function countGapClaims(): { total: number; keterbatasan: number; saran: number; documents: number } {
-  const row = db
-    .prepare(
-      `SELECT COUNT(*) as total,
-              SUM(jenis = 'keterbatasan') as keterbatasan,
-              SUM(jenis = 'saran_lanjutan') as saran,
-              COUNT(DISTINCT document_id) as documents
-       FROM claims WHERE jenis IN ('keterbatasan','saran_lanjutan')`
-    )
-    .get() as { total: number; keterbatasan: number | null; saran: number | null; documents: number };
+export async function countGapClaims(): Promise<{ total: number; keterbatasan: number; saran: number; documents: number }> {
+  const [row] = await sql<{ total: number; keterbatasan: number | null; saran: number | null; documents: number }[]>`
+    SELECT COUNT(*)::int as total,
+           SUM((jenis = 'keterbatasan')::int) as keterbatasan,
+           SUM((jenis = 'saran_lanjutan')::int) as saran,
+           COUNT(DISTINCT document_id)::int as documents
+    FROM claims WHERE jenis IN ('keterbatasan','saran_lanjutan')
+  `;
 
   return {
     total: row.total,

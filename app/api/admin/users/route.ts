@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db, type UserRole } from "@/lib/db";
+import { sql, type UserRole } from "@/lib/db";
 import { requireAdmin, createUser, getUserByEmail, logAudit, AuthError } from "@/lib/auth";
 
 export async function GET() {
@@ -12,9 +12,9 @@ export async function GET() {
     throw err;
   }
 
-  const users = db
-    .prepare("SELECT id, email, full_name, role, unit, created_at FROM users ORDER BY created_at ASC")
-    .all();
+  const users = await sql`
+    SELECT id, email, full_name, role, unit, created_at FROM users ORDER BY created_at ASC
+  `;
   return NextResponse.json({ users });
 }
 
@@ -48,12 +48,12 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
-  if (getUserByEmail(email)) {
+  if (await getUserByEmail(email)) {
     return NextResponse.json({ error: "Email sudah terdaftar" }, { status: 409 });
   }
 
-  const user = createUser({ email, password, fullName, role, unit });
-  logAudit(admin.id, "create_user", user.id, `${email} (${role})`);
+  const user = await createUser({ email, password, fullName, role, unit });
+  await logAudit(admin.id, "create_user", user.id, `${email} (${role})`);
 
   return NextResponse.json(
     {

@@ -16,7 +16,7 @@ export async function PUT(
   }
 
   const { id } = await ctx.params;
-  const existing = getSkill(id);
+  const existing = await getSkill(id);
   if (!existing) {
     return NextResponse.json({ error: "Skill tidak ditemukan" }, { status: 404 });
   }
@@ -35,7 +35,7 @@ export async function PUT(
     );
   }
 
-  const skill = updateSkill(id, { name, description, instructions, enabled });
+  const skill = await updateSkill(id, { name, description, instructions, enabled });
   return NextResponse.json({ skill });
 }
 
@@ -53,6 +53,6 @@ export async function DELETE(
   }
 
   const { id } = await ctx.params;
-  deleteSkill(id);
+  await deleteSkill(id);
   return NextResponse.json({ ok: true });
 }

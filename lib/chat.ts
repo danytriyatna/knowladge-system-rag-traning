@@ -4,7 +4,7 @@ import { listEnabledSkills } from "./skills";
 
 const MODEL = process.env.GEMINI_CHAT_MODEL ?? "gemini-3.1-flash-lite";
 
-function buildPrompt(question: string, chunks: RetrievedChunk[]): string {
+async function buildPrompt(question: string, chunks: RetrievedChunk[]): Promise<string> {
   const context = chunks
     .map(
       (chunk, i) =>
@@ -12,7 +12,7 @@ function buildPrompt(question: string, chunks: RetrievedChunk[]): string {
     )
     .join("\n\n");
 
-  const skills = listEnabledSkills();
+  const skills = await listEnabledSkills();
   const skillsSection =
     skills.length > 0
       ? `\nKEMAMPUAN ANALISIS DATA & PENGAMBILAN KESIMPULAN:\nTerapkan kemampuan berikut kalau relevan dengan pertanyaan, tapi tetap wajib berpegang pada ATURAN WAJIB di atas (dilarang berhalusinasi, semua analisis harus berdasar data yang benar-benar ada di konteks):\n${skills
@@ -165,7 +165,7 @@ export async function answerFromContext(
   const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.generateContent({
     model: MODEL,
-    contents: buildPrompt(question, chunks),
+    contents: await buildPrompt(question, chunks),
     config: {
       responseMimeType: "application/json",
       responseSchema: {

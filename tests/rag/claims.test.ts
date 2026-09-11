@@ -40,10 +40,10 @@ describe("isGapCandidate", () => {
 });
 
 describe("findGapCandidates (korpus produksi)", () => {
-  it("memangkas korpus menjadi sebagian kecil saja", () => {
-    if (countEmbeddings() === 0) return;
+  it("memangkas korpus menjadi sebagian kecil saja", async () => {
+    if ((await countEmbeddings()) === 0) return;
 
-    const candidates = findGapCandidates();
+    const candidates = await findGapCandidates();
     expect(candidates.length).toBeGreaterThan(0);
     // Kalau penyaring tiba-tiba meloloskan sebagian besar korpus, biaya panen
     // meledak — batas ini menjaga hal itu ketahuan lebih dulu.

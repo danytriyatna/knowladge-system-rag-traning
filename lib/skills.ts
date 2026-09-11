@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { db, type SkillRecord } from "./db";
+import { sql, type SkillRecord } from "./db";
 
 interface DefaultSkill {
   name: string;
@@ -40,48 +40,43 @@ const DEFAULT_SKILLS: DefaultSkill[] = [
   },
 ];
 
-function seedDefaultSkillsIfEmpty() {
-  const { count } = db.prepare("SELECT COUNT(*) as count FROM skills").get() as {
-    count: number;
-  };
+async function seedDefaultSkillsIfEmpty() {
+  const [{ count }] = await sql<{ count: number }[]>`SELECT COUNT(*)::int as count FROM skills`;
   if (count > 0) return;
 
   const now = new Date().toISOString();
-  const insert = db.prepare(
-    `INSERT INTO skills (id, name, description, instructions, enabled, created_at, updated_at)
-     VALUES (@id, @name, @description, @instructions, 1, @created_at, @updated_at)`
-  );
-  const insertAll = db.transaction((skills: DefaultSkill[]) => {
-    for (const skill of skills) {
-      insert.run({ id: randomUUID(), ...skill, created_at: now, updated_at: now });
-    }
-  });
-  insertAll(DEFAULT_SKILLS);
+  const rows = DEFAULT_SKILLS.map((skill) => ({
+    id: randomUUID(),
+    ...skill,
+    enabled: 1,
+    created_at: now,
+    updated_at: now,
+  }));
+  await sql`
+    INSERT INTO skills ${sql(rows, "id", "name", "description", "instructions", "enabled", "created_at", "updated_at")}
+  `;
 }
 
-export function listSkills(): SkillRecord[] {
-  seedDefaultSkillsIfEmpty();
-  return db.prepare("SELECT * FROM skills ORDER BY created_at ASC").all() as SkillRecord[];
+export async function listSkills(): Promise<SkillRecord[]> {
+  await seedDefaultSkillsIfEmpty();
+  return sql<SkillRecord[]>`SELECT * FROM skills ORDER BY created_at ASC`;
 }
 
-export function listEnabledSkills(): SkillRecord[] {
-  seedDefaultSkillsIfEmpty();
-  return db
-    .prepare("SELECT * FROM skills WHERE enabled = 1 ORDER BY created_at ASC")
-    .all() as SkillRecord[];
+export async function listEnabledSkills(): Promise<SkillRecord[]> {
+  await seedDefaultSkillsIfEmpty();
+  return sql<SkillRecord[]>`SELECT * FROM skills WHERE enabled = 1 ORDER BY created_at ASC`;
 }
 
-export function getSkill(id: string): SkillRecord | undefined {
-  return db.prepare("SELECT * FROM skills WHERE id = ?").get(id) as
-    | SkillRecord
-    | undefined;
+export async function getSkill(id: string): Promise<SkillRecord | undefined> {
+  const [row] = await sql<SkillRecord[]>`SELECT * FROM skills WHERE id = ${id}`;
+  return row;
 }
 
-export function createSkill(input: {
+export async function createSkill(input: {
   name: string;
   description: string;
   instructions: string;
-}): SkillRecord {
+}): Promise<SkillRecord> {
   const now = new Date().toISOString();
   const record: SkillRecord = {
     id: randomUUID(),
@@ -92,18 +87,18 @@ export function createSkill(input: {
     created_at: now,
     updated_at: now,
   };
-  db.prepare(
-    `INSERT INTO skills (id, name, description, instructions, enabled, created_at, updated_at)
-     VALUES (@id, @name, @description, @instructions, @enabled, @created_at, @updated_at)`
-  ).run(record);
+  await sql`
+    INSERT INTO skills (id, name, description, instructions, enabled, created_at, updated_at)
+    VALUES (${record.id}, ${record.name}, ${record.description}, ${record.instructions}, ${record.enabled}, ${record.created_at}, ${record.updated_at})
+  `;
   return record;
 }
 
-export function updateSkill(
+export async function updateSkill(
   id: string,
   input: { name: string; description: string; instructions: string; enabled: boolean }
-): SkillRecord | undefined {
-  const existing = getSkill(id);
+): Promise<SkillRecord | undefined> {
+  const existing = await getSkill(id);
   if (!existing) return undefined;
 
   const updated: SkillRecord = {
@@ -114,13 +109,13 @@ export function updateSkill(
     enabled: input.enabled ? 1 : 0,
     updated_at: new Date().toISOString(),
   };
-  db.prepare(
-    `UPDATE skills SET name=@name, description=@description, instructions=@instructions,
-     enabled=@enabled, updated_at=@updated_at WHERE id=@id`
-  ).run(updated);
+  await sql`
+    UPDATE skills SET name=${updated.name}, description=${updated.description}, instructions=${updated.instructions},
+    enabled=${updated.enabled}, updated_at=${updated.updated_at} WHERE id=${id}
+  `;
   return updated;
 }
 
-export function deleteSkill(id: string): void {
-  db.prepare("DELETE FROM skills WHERE id = ?").run(id);
+export async function deleteSkill(id: string): Promise<void> {
+  await sql`DELETE FROM skills WHERE id = ${id}`;
 }

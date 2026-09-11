@@ -1,6 +1,6 @@
-import fs from "node:fs/promises";
 import { NextResponse } from "next/server";
-import { db, type DocumentRecord } from "@/lib/db";
+import { sql, type DocumentRecord } from "@/lib/db";
+import { downloadPdf } from "@/lib/storage";
 import { requireUser, AuthError } from "@/lib/auth";
 
 export async function GET(
@@ -17,9 +17,7 @@ export async function GET(
   }
 
   const { id } = await ctx.params;
-  const document = db
-    .prepare("SELECT * FROM documents WHERE id = ?")
-    .get(id) as DocumentRecord | undefined;
+  const [document] = await sql<DocumentRecord[]>`SELECT * FROM documents WHERE id = ${id}`;
 
   if (!document) {
     return NextResponse.json({ error: "Dokumen tidak ditemukan" }, { status: 404 });
@@ -27,7 +25,7 @@ export async function GET(
 
   let buffer: Buffer;
   try {
-    buffer = await fs.readFile(document.stored_path);
+    buffer = await downloadPdf(document.stored_path);
   } catch {
     return NextResponse.json(
       { error: "File PDF tidak ditemukan di server" },

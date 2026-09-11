@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
-import { db, type ChunkRecord, type DocumentRecord } from "@/lib/db";
+import { sql, type ChunkRecord, type DocumentRecord } from "@/lib/db";
 import { chunkText } from "@/lib/chunk";
 import { replaceRegulationMentions } from "@/lib/regulations";
 import { requireAdmin, AuthError } from "@/lib/auth";
@@ -19,19 +19,15 @@ export async function GET(
   }
 
   const { id } = await ctx.params;
-  const document = db
-    .prepare("SELECT id FROM documents WHERE id = ?")
-    .get(id) as { id: string } | undefined;
+  const [document] = await sql<{ id: string }[]>`SELECT id FROM documents WHERE id = ${id}`;
 
   if (!document) {
     return NextResponse.json({ error: "Dokumen tidak ditemukan" }, { status: 404 });
   }
 
-  const chunks = db
-    .prepare(
-      "SELECT * FROM chunks WHERE document_id = ? ORDER BY chunk_index ASC"
-    )
-    .all(id) as ChunkRecord[];
+  const chunks = await sql<ChunkRecord[]>`
+    SELECT * FROM chunks WHERE document_id = ${id} ORDER BY chunk_index ASC
+  `;
 
   return NextResponse.json({ chunks });
 }
@@ -50,9 +46,7 @@ export async function POST(
   }
 
   const { id } = await ctx.params;
-  const document = db
-    .prepare("SELECT * FROM documents WHERE id = ?")
-    .get(id) as DocumentRecord | undefined;
+  const [document] = await sql<DocumentRecord[]>`SELECT * FROM documents WHERE id = ${id}`;
 
   if (!document) {
     return NextResponse.json({ error: "Dokumen tidak ditemukan" }, { status: 404 });
@@ -76,19 +70,18 @@ export async function POST(
     created_at: now,
   }));
 
-  const replaceChunks = db.transaction((chunkRecords: ChunkRecord[]) => {
-    db.prepare("DELETE FROM chunks WHERE document_id = ?").run(id);
-    const insert = db.prepare(
-      `INSERT INTO chunks (id, document_id, chunk_index, content, char_count, created_at)
-       VALUES (@id, @document_id, @chunk_index, @content, @char_count, @created_at)`
-    );
-    for (const record of chunkRecords) insert.run(record);
+  await sql.begin(async (tx) => {
+    await tx`DELETE FROM chunks WHERE document_id = ${id}`;
+    if (records.length > 0) {
+      await tx`
+        INSERT INTO chunks ${tx(records, "id", "document_id", "chunk_index", "content", "char_count", "created_at")}
+      `;
+    }
   });
-  replaceChunks(records);
 
   // Panen rujukan peraturan/SNI dari chunk yang baru dibuat, supaya indeks
   // rujukan selalu sinkron dengan chunk yang sedang berlaku.
-  const mentionCount = replaceRegulationMentions(id, records);
+  const mentionCount = await replaceRegulationMentions(id, records);
 
   return NextResponse.json(
     { chunks: records, count: records.length, regulationMentions: mentionCount },

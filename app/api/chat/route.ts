@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
-import { db, type QueryMode, type EvidenceStrength } from "@/lib/db";
+import { sql, type QueryMode, type EvidenceStrength } from "@/lib/db";
 import { requireUser, logAudit, AuthError } from "@/lib/auth";
 import { embedTexts } from "@/lib/embedding";
 import {
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Pertanyaan tidak boleh kosong" }, { status: 400 });
   }
 
-  if (countEmbeddings() === 0) {
+  if ((await countEmbeddings()) === 0) {
     return NextResponse.json(
       {
         error:
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
 
   const [semanticK, keywordK, regulationK] =
     mode === "kajian" ? TOP_K_KAJIAN : TOP_K_CHAT;
-  const chunks = searchSimilarChunks(
+  const chunks = await searchSimilarChunks(
     queryVector,
     question,
     semanticK,
@@ -170,21 +170,11 @@ export async function POST(request: Request) {
     const summary =
       pointsWithCitations.length > 0 ? kajian.summary : NO_SOURCE_ANSWER;
 
-    db.prepare(
-      `INSERT INTO chat_history (id, question, answer, sources, created_at, mode, evidence_strength, points, user_id)
-       VALUES (@id, @question, @answer, @sources, @created_at, @mode, @evidence_strength, @points, @user_id)`
-    ).run({
-      id,
-      question,
-      answer: summary,
-      sources: JSON.stringify(sources),
-      created_at,
-      mode,
-      evidence_strength: evidenceStrength,
-      points: JSON.stringify(pointsWithCitations),
-      user_id: user.id,
-    });
-    logAudit(user.id, "query_kajian", id, question.slice(0, 200));
+    await sql`
+      INSERT INTO chat_history (id, question, answer, sources, created_at, mode, evidence_strength, points, user_id)
+      VALUES (${id}, ${question}, ${summary}, ${JSON.stringify(sources)}, ${created_at}, ${mode}, ${evidenceStrength}, ${JSON.stringify(pointsWithCitations)}, ${user.id})
+    `;
+    await logAudit(user.id, "query_kajian", id, question.slice(0, 200));
 
     return NextResponse.json({
       id,
@@ -226,11 +216,11 @@ export async function POST(request: Request) {
     answer = NO_SOURCE_ANSWER;
   }
 
-  db.prepare(
-    `INSERT INTO chat_history (id, question, answer, sources, created_at, mode, evidence_strength, points, user_id)
-     VALUES (@id, @question, @answer, @sources, @created_at, @mode, NULL, NULL, @user_id)`
-  ).run({ id, question, answer, sources: JSON.stringify(sources), created_at, mode, user_id: user.id });
-  logAudit(user.id, "query_chat", id, question.slice(0, 200));
+  await sql`
+    INSERT INTO chat_history (id, question, answer, sources, created_at, mode, evidence_strength, points, user_id)
+    VALUES (${id}, ${question}, ${answer}, ${JSON.stringify(sources)}, ${created_at}, ${mode}, NULL, NULL, ${user.id})
+  `;
+  await logAudit(user.id, "query_chat", id, question.slice(0, 200));
 
   return NextResponse.json({
     id,

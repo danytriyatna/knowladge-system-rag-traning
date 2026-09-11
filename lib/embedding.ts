@@ -38,14 +38,17 @@ export async function embedTexts(texts: string[]): Promise<number[][]> {
   return results;
 }
 
-export function vectorToBuffer(vector: number[]): Buffer {
-  return Buffer.from(new Float32Array(vector).buffer);
+/** Literal pgvector, mis. "[0.1,0.2,...]" — dipakai lewat cast ::vector di SQL. */
+export function vectorToPgLiteral(vector: number[]): string {
+  return `[${vector.join(",")}]`;
 }
 
-export function bufferToVector(buffer: Buffer): number[] {
-  return Array.from(
-    new Float32Array(buffer.buffer, buffer.byteOffset, buffer.byteLength / 4)
-  );
+/** Kebalikan dari vectorToPgLiteral — dipakai kalau perlu menampilkan angka mentahnya. */
+export function parsePgVector(literal: string): number[] {
+  return literal
+    .slice(1, -1)
+    .split(",")
+    .map((v) => Number(v));
 }
 
 export function cosineSimilarity(a: number[], b: number[]): number {

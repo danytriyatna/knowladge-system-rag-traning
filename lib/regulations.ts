@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { db, type RegulationKind, type RegulationMentionRecord } from "./db";
+import { sql, type RegulationKind, type RegulationMentionRecord } from "./db";
 
 export interface ExtractedMention {
   jenis: RegulationKind;
@@ -162,10 +162,10 @@ interface ChunkForHarvest {
  * Panen ulang seluruh rujukan milik satu dokumen. Dipanggil setiap kali chunk
  * dokumen dibuat ulang, jadi isinya selalu sinkron dengan chunk yang berlaku.
  */
-export function replaceRegulationMentions(
+export async function replaceRegulationMentions(
   documentId: string,
   chunks: ChunkForHarvest[]
-): number {
+): Promise<number> {
   const now = new Date().toISOString();
   const rows: RegulationMentionRecord[] = [];
 
@@ -181,38 +181,33 @@ export function replaceRegulationMentions(
     }
   }
 
-  const write = db.transaction(() => {
-    db.prepare("DELETE FROM regulation_mentions WHERE document_id = ?").run(
-      documentId
-    );
-    const insert = db.prepare(
-      `INSERT INTO regulation_mentions
-         (id, chunk_id, document_id, jenis, nomor_normal, nomor_lengkap, tahun, teks_asli, created_at)
-       VALUES
-         (@id, @chunk_id, @document_id, @jenis, @nomor_normal, @nomor_lengkap, @tahun, @teks_asli, @created_at)`
-    );
-    for (const row of rows) insert.run(row);
+  await sql.begin(async (tx) => {
+    await tx`DELETE FROM regulation_mentions WHERE document_id = ${documentId}`;
+    if (rows.length > 0) {
+      await tx`
+        INSERT INTO regulation_mentions
+          (id, chunk_id, document_id, jenis, nomor_normal, nomor_lengkap, tahun, teks_asli, created_at)
+        VALUES ${tx(rows, "id", "chunk_id", "document_id", "jenis", "nomor_normal", "nomor_lengkap", "tahun", "teks_asli", "created_at")}
+      `;
+    }
   });
-  write();
 
   return rows.length;
 }
 
 /** Panen ulang untuk SELURUH korpus. Dipakai sekali saat backfill. */
-export function backfillRegulationMentions(): {
+export async function backfillRegulationMentions(): Promise<{
   documents: number;
   mentions: number;
-} {
-  const documentIds = db
-    .prepare("SELECT DISTINCT document_id FROM chunks")
-    .all() as { document_id: string }[];
+}> {
+  const documentIds = await sql<{ document_id: string }[]>`SELECT DISTINCT document_id FROM chunks`;
 
   let mentions = 0;
   for (const { document_id } of documentIds) {
-    const chunks = db
-      .prepare("SELECT id, document_id, content FROM chunks WHERE document_id = ?")
-      .all(document_id) as ChunkForHarvest[];
-    mentions += replaceRegulationMentions(document_id, chunks);
+    const chunks = await sql<ChunkForHarvest[]>`
+      SELECT id, document_id, content FROM chunks WHERE document_id = ${document_id}
+    `;
+    mentions += await replaceRegulationMentions(document_id, chunks);
   }
 
   return { documents: documentIds.length, mentions };
@@ -228,35 +223,31 @@ export interface RegulationSummary {
 }
 
 /** Daftar peraturan yang paling sering dirujuk korpus. */
-export function listRegulations(limit = 100): RegulationSummary[] {
-  return db
-    .prepare(
-      `SELECT jenis, nomor_normal, nomor_lengkap, tahun,
-              COUNT(*) as mention_count,
-              COUNT(DISTINCT document_id) as document_count
-       FROM regulation_mentions
-       GROUP BY jenis, nomor_lengkap
-       ORDER BY document_count DESC, mention_count DESC
-       LIMIT ?`
-    )
-    .all(limit) as RegulationSummary[];
+export async function listRegulations(limit = 100): Promise<RegulationSummary[]> {
+  return sql<RegulationSummary[]>`
+    SELECT jenis, nomor_normal, nomor_lengkap, tahun,
+           COUNT(*)::int as mention_count,
+           COUNT(DISTINCT document_id)::int as document_count
+    FROM regulation_mentions
+    GROUP BY jenis, nomor_lengkap, nomor_normal, tahun
+    ORDER BY document_count DESC, mention_count DESC
+    LIMIT ${limit}
+  `;
 }
 
 /** Peraturan yang dirujuk satu naskah tertentu. */
-export function listRegulationsForDocument(
+export async function listRegulationsForDocument(
   documentId: string
-): RegulationSummary[] {
-  return db
-    .prepare(
-      `SELECT jenis, nomor_normal, nomor_lengkap, tahun,
-              COUNT(*) as mention_count,
-              COUNT(DISTINCT document_id) as document_count
-       FROM regulation_mentions
-       WHERE document_id = ?
-       GROUP BY jenis, nomor_lengkap
-       ORDER BY mention_count DESC`
-    )
-    .all(documentId) as RegulationSummary[];
+): Promise<RegulationSummary[]> {
+  return sql<RegulationSummary[]>`
+    SELECT jenis, nomor_normal, nomor_lengkap, tahun,
+           COUNT(*)::int as mention_count,
+           COUNT(DISTINCT document_id)::int as document_count
+    FROM regulation_mentions
+    WHERE document_id = ${documentId}
+    GROUP BY jenis, nomor_lengkap, nomor_normal, tahun
+    ORDER BY mention_count DESC
+  `;
 }
 
 export interface RegulationCitingDocument {
@@ -326,20 +317,19 @@ export function buildJdihSearchUrl(nomorLengkap: string): string {
   return `https://peraturan.bpk.go.id/Search?keywords=${encodeURIComponent(nomorLengkap)}`;
 }
 
-export function getRegulationLink(nomorLengkap: string): RegulationLink | null {
-  return (
-    (db
-      .prepare("SELECT * FROM regulation_links WHERE nomor_lengkap = ?")
-      .get(nomorLengkap) as RegulationLink | undefined) ?? null
-  );
+export async function getRegulationLink(nomorLengkap: string): Promise<RegulationLink | null> {
+  const [row] = await sql<RegulationLink[]>`
+    SELECT * FROM regulation_links WHERE nomor_lengkap = ${nomorLengkap}
+  `;
+  return row ?? null;
 }
 
-export function upsertRegulationLink(input: {
+export async function upsertRegulationLink(input: {
   nomor_lengkap: string;
   url: string;
   judul_resmi?: string;
   curated_by?: string;
-}): RegulationLink {
+}): Promise<RegulationLink> {
   if (!isAllowedRegulationUrl(input.url)) {
     throw new Error(
       "URL harus https dan berasal dari situs JDIH resmi (mis. peraturan.bpk.go.id)"
@@ -354,21 +344,21 @@ export function upsertRegulationLink(input: {
     curated_at: new Date().toISOString(),
   };
 
-  db.prepare(
-    `INSERT INTO regulation_links (nomor_lengkap, url, judul_resmi, curated_by, curated_at)
-     VALUES (@nomor_lengkap, @url, @judul_resmi, @curated_by, @curated_at)
-     ON CONFLICT(nomor_lengkap) DO UPDATE SET
-       url = excluded.url,
-       judul_resmi = excluded.judul_resmi,
-       curated_by = excluded.curated_by,
-       curated_at = excluded.curated_at`
-  ).run(row);
+  await sql`
+    INSERT INTO regulation_links (nomor_lengkap, url, judul_resmi, curated_by, curated_at)
+    VALUES (${row.nomor_lengkap}, ${row.url}, ${row.judul_resmi}, ${row.curated_by}, ${row.curated_at})
+    ON CONFLICT (nomor_lengkap) DO UPDATE SET
+      url = excluded.url,
+      judul_resmi = excluded.judul_resmi,
+      curated_by = excluded.curated_by,
+      curated_at = excluded.curated_at
+  `;
 
   return row;
 }
 
-export function deleteRegulationLink(nomorLengkap: string): void {
-  db.prepare("DELETE FROM regulation_links WHERE nomor_lengkap = ?").run(nomorLengkap);
+export async function deleteRegulationLink(nomorLengkap: string): Promise<void> {
+  await sql`DELETE FROM regulation_links WHERE nomor_lengkap = ${nomorLengkap}`;
 }
 
 const SNIPPET_RADIUS = 200;
@@ -453,45 +443,41 @@ function buildSnippet(content: string, teksAsli: string): string {
 }
 
 /** Rincian satu peraturan: siapa merujuknya, di kalimat apa, dan edisi lainnya. */
-export function getRegulationDetail(nomorLengkap: string): RegulationDetail | null {
-  const head = db
-    .prepare(
-      `SELECT jenis, nomor_normal, nomor_lengkap, tahun
-       FROM regulation_mentions WHERE nomor_lengkap = ? LIMIT 1`
-    )
-    .get(nomorLengkap) as
-    | { jenis: RegulationKind; nomor_normal: string; nomor_lengkap: string; tahun: number | null }
-    | undefined;
+export async function getRegulationDetail(nomorLengkap: string): Promise<RegulationDetail | null> {
+  const [head] = await sql<
+    { jenis: RegulationKind; nomor_normal: string; nomor_lengkap: string; tahun: number | null }[]
+  >`
+    SELECT jenis, nomor_normal, nomor_lengkap, tahun
+    FROM regulation_mentions WHERE nomor_lengkap = ${nomorLengkap} LIMIT 1
+  `;
 
   if (!head) return null;
 
-  const editions = db
-    .prepare(
-      `SELECT nomor_lengkap, tahun, COUNT(DISTINCT document_id) as document_count
-       FROM regulation_mentions WHERE nomor_normal = ?
-       GROUP BY nomor_lengkap ORDER BY tahun DESC`
-    )
-    .all(head.nomor_normal) as RegulationDetail["editions"];
+  const editions = await sql<RegulationDetail["editions"]>`
+    SELECT nomor_lengkap, tahun, COUNT(DISTINCT document_id)::int as document_count
+    FROM regulation_mentions WHERE nomor_normal = ${head.nomor_normal}
+    GROUP BY nomor_lengkap, tahun ORDER BY tahun DESC
+  `;
 
-  const rows = db
-    .prepare(
-      `SELECT m.document_id, m.teks_asli, c.chunk_index, c.content,
-              d.filename, d.title, d.published_year
-       FROM regulation_mentions m
-       JOIN chunks c ON c.id = m.chunk_id
-       JOIN documents d ON d.id = m.document_id
-       WHERE m.nomor_lengkap = ?
-       ORDER BY d.published_year DESC, c.chunk_index ASC`
-    )
-    .all(nomorLengkap) as {
-    document_id: string;
-    teks_asli: string;
-    chunk_index: number;
-    content: string;
-    filename: string;
-    title: string;
-    published_year: number | null;
-  }[];
+  const rows = await sql<
+    {
+      document_id: string;
+      teks_asli: string;
+      chunk_index: number;
+      content: string;
+      filename: string;
+      title: string;
+      published_year: number | null;
+    }[]
+  >`
+    SELECT m.document_id, m.teks_asli, c.chunk_index, c.content,
+           d.filename, d.title, d.published_year
+    FROM regulation_mentions m
+    JOIN chunks c ON c.id = m.chunk_id
+    JOIN documents d ON d.id = m.document_id
+    WHERE m.nomor_lengkap = ${nomorLengkap}
+    ORDER BY d.published_year DESC, c.chunk_index ASC
+  `;
 
   const byDocument = new Map<string, RegulationCitingDocument>();
   const titleCounts = new Map<string, number>();
@@ -544,7 +530,7 @@ export function getRegulationDetail(nomorLengkap: string): RegulationDetail | nu
     ...head,
     judul: mainTitle,
     judul_varian: variants,
-    link: getRegulationLink(nomorLengkap),
+    link: await getRegulationLink(nomorLengkap),
     jdih_search_url: buildJdihSearchUrl(nomorLengkap),
     pasal_disebut: Array.from(articles).sort(
       (a, b) => (parseInt(a.replace(/\D/g, ""), 10) || 0) - (parseInt(b.replace(/\D/g, ""), 10) || 0)
@@ -573,40 +559,36 @@ export interface OutdatedEdition {
  * dicabut (sistem belum punya data status resmi), hanya bahwa ada edisi yang
  * lebih baru yang beredar di korpus. Penetapan status tetap urusan kurator.
  */
-export function findOutdatedEditions(): OutdatedEdition[] {
-  const latest = db
-    .prepare(
-      `SELECT nomor_normal, MAX(tahun) as tahun_terbaru
-       FROM regulation_mentions
-       WHERE tahun IS NOT NULL
-       GROUP BY nomor_normal
-       HAVING COUNT(DISTINCT tahun) > 1`
-    )
-    .all() as { nomor_normal: string; tahun_terbaru: number }[];
+export async function findOutdatedEditions(): Promise<OutdatedEdition[]> {
+  const latest = await sql<{ nomor_normal: string; tahun_terbaru: number }[]>`
+    SELECT nomor_normal, MAX(tahun) as tahun_terbaru
+    FROM regulation_mentions
+    WHERE tahun IS NOT NULL
+    GROUP BY nomor_normal
+    HAVING COUNT(DISTINCT tahun) > 1
+  `;
 
   const results: OutdatedEdition[] = [];
   for (const { nomor_normal, tahun_terbaru } of latest) {
-    const newest = db
-      .prepare(
-        `SELECT nomor_lengkap FROM regulation_mentions
-         WHERE nomor_normal = ? AND tahun = ? LIMIT 1`
-      )
-      .get(nomor_normal, tahun_terbaru) as { nomor_lengkap: string } | undefined;
+    const [newest] = await sql<{ nomor_lengkap: string }[]>`
+      SELECT nomor_lengkap FROM regulation_mentions
+      WHERE nomor_normal = ${nomor_normal} AND tahun = ${tahun_terbaru} LIMIT 1
+    `;
 
-    const stale = db
-      .prepare(
-        `SELECT DISTINCT m.nomor_lengkap, m.tahun, m.document_id, d.filename, d.title
-         FROM regulation_mentions m
-         JOIN documents d ON d.id = m.document_id
-         WHERE m.nomor_normal = ? AND m.tahun < ?`
-      )
-      .all(nomor_normal, tahun_terbaru) as {
-      nomor_lengkap: string;
-      tahun: number;
-      document_id: string;
-      filename: string;
-      title: string;
-    }[];
+    const stale = await sql<
+      {
+        nomor_lengkap: string;
+        tahun: number;
+        document_id: string;
+        filename: string;
+        title: string;
+      }[]
+    >`
+      SELECT DISTINCT m.nomor_lengkap, m.tahun, m.document_id, d.filename, d.title
+      FROM regulation_mentions m
+      JOIN documents d ON d.id = m.document_id
+      WHERE m.nomor_normal = ${nomor_normal} AND m.tahun < ${tahun_terbaru}
+    `;
 
     for (const row of stale) {
       results.push({

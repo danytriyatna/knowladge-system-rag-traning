@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from "vitest";
-import { db } from "@/lib/db";
+import { sql } from "@/lib/db";
 import { embedTexts } from "@/lib/embedding";
 import { searchSimilarChunks, countEmbeddings } from "@/lib/rag";
 
@@ -70,13 +70,13 @@ const TOP_K_CHAT: [number, number] = [10, 6];
 
 let corpusReady = false;
 
-beforeAll(() => {
-  corpusReady = countEmbeddings() > 0;
+beforeAll(async () => {
+  corpusReady = (await countEmbeddings()) > 0;
   for (const c of CASES) {
-    const row = db.prepare("SELECT id FROM documents WHERE id = ?").get(c.expectedDocumentId);
+    const [row] = await sql`SELECT id FROM documents WHERE id = ${c.expectedDocumentId}`;
     if (!row) {
       throw new Error(
-        `Fixture rusak: dokumen ground-truth "${c.description}" (${c.expectedDocumentId}) tidak ada lagi di storage/db.sqlite`
+        `Fixture rusak: dokumen ground-truth "${c.description}" (${c.expectedDocumentId}) tidak ada lagi di Supabase`
       );
     }
   }
@@ -91,7 +91,7 @@ describe("hybrid retrieval accuracy (korpus produksi)", () => {
     "konteks yang dikirim ke Gemini (TOP_K_CHAT) untuk pertanyaan tentang $description memuat naskah yang benar",
     async ({ question, expectedDocumentId }) => {
       const [queryVector] = await embedTexts([question]);
-      const results = searchSimilarChunks(queryVector, question, ...TOP_K_CHAT);
+      const results = await searchSimilarChunks(queryVector, question, ...TOP_K_CHAT);
 
       expect(results.length).toBeGreaterThan(0);
       const docIds = results.map((r) => r.document_id);
@@ -106,7 +106,7 @@ describe("hybrid retrieval accuracy (korpus produksi)", () => {
       // saja (skor cosine tertinggi), bukan hasil gabungan hybrid — supaya
       // regresi kualitas embedding kelihatan meski masih "diselamatkan" FTS.
       const [queryVector] = await embedTexts([question]);
-      const results = searchSimilarChunks(queryVector, question, ...TOP_K_CHAT);
+      const results = await searchSimilarChunks(queryVector, question, ...TOP_K_CHAT);
       const top5BySimilarity = [...results]
         .sort((a, b) => b.similarity - a.similarity)
         .slice(0, 5)
@@ -127,13 +127,13 @@ describe("hybrid retrieval accuracy (korpus produksi)", () => {
     "filter tahun ($expectedYear) untuk $description hanya me-return chunk dari dokumen tahun itu",
     async ({ question, expectedYear }) => {
       const [queryVector] = await embedTexts([question]);
-      const results = searchSimilarChunks(queryVector, question, 10, 10, { year: expectedYear });
+      const results = await searchSimilarChunks(queryVector, question, 10, 10, { year: expectedYear });
 
       expect(results.length).toBeGreaterThan(0);
       for (const r of results) {
-        const row = db
-          .prepare("SELECT published_year FROM documents WHERE id = ?")
-          .get(r.document_id) as { published_year: number | null };
+        const [row] = await sql<{ published_year: number | null }[]>`
+          SELECT published_year FROM documents WHERE id = ${r.document_id}
+        `;
         expect(row.published_year).toBe(expectedYear);
       }
     }
@@ -143,7 +143,7 @@ describe("hybrid retrieval accuracy (korpus produksi)", () => {
     "filter tema ('$expectedTopic') untuk $description tetap memuat naskah yang benar",
     async ({ question, expectedDocumentId, expectedTopic }) => {
       const [queryVector] = await embedTexts([question]);
-      const results = searchSimilarChunks(queryVector, question, 10, 10, {
+      const results = await searchSimilarChunks(queryVector, question, 10, 10, {
         topics: [expectedTopic],
       });
 
@@ -155,7 +155,7 @@ describe("hybrid retrieval accuracy (korpus produksi)", () => {
   it("filter tahun yang tidak cocok dengan naskah manapun mengembalikan hasil kosong", async () => {
     const question = CASES[0].question;
     const [queryVector] = await embedTexts([question]);
-    const results = searchSimilarChunks(queryVector, question, 10, 10, { year: 1899 });
+    const results = await searchSimilarChunks(queryVector, question, 10, 10, { year: 1899 });
     expect(results).toHaveLength(0);
   });
 
@@ -171,7 +171,7 @@ describe("hybrid retrieval accuracy (korpus produksi)", () => {
     const expectedDocumentId = "d2614cb0-5111-4963-9023-2e7156fcf72e";
 
     const [queryVector] = await embedTexts([question]);
-    const results = searchSimilarChunks(queryVector, question, ...TOP_K_CHAT);
+    const results = await searchSimilarChunks(queryVector, question, ...TOP_K_CHAT);
     const matched = results.find((r) => r.document_id === expectedDocumentId);
 
     expect(matched).toBeDefined();
@@ -187,7 +187,7 @@ describe("hybrid retrieval accuracy (korpus produksi)", () => {
     // menemukannya secara literal.
     const question = "Apa hasil pengkajian sarana prasarana permukiman di Pulau Giliyang?";
     const [queryVector] = await embedTexts([question]);
-    const results = searchSimilarChunks(queryVector, question, 8, 8);
+    const results = await searchSimilarChunks(queryVector, question, 8, 8);
 
     const giliyangDocId = "121413a4-8b73-4a0b-8230-3e68fc6defd0";
     const matched = results.find((r) => r.document_id === giliyangDocId);

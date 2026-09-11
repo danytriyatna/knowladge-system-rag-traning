@@ -43,10 +43,16 @@ export async function GET(request: Request) {
   const year = Number(url.searchParams.get("year"));
   if (Number.isInteger(year) && year > 0) filters.year = year;
 
+  const [claims, ringkasan, kandidat] = await Promise.all([
+    listGapClaims(filters),
+    countGapClaims(),
+    findGapCandidates(),
+  ]);
+
   return NextResponse.json({
-    claims: listGapClaims(filters),
-    ringkasan: countGapClaims(),
-    kandidat: findGapCandidates().length,
+    claims,
+    ringkasan,
+    kandidat: kandidat.length,
   });
 }
 
@@ -67,7 +73,7 @@ export async function POST(request: Request) {
 
   try {
     const outcome = await harvestGaps({ documentId, limit });
-    logAudit(
+    await logAudit(
       user.id,
       "harvest_gap_claims",
       documentId,

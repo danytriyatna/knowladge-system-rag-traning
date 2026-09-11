@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from "vitest";
-import { db } from "@/lib/db";
+import { sql } from "@/lib/db";
 import { embedTexts } from "@/lib/embedding";
 import { searchSimilarChunks, type RetrievedChunk } from "@/lib/rag";
 import { answerFromContext, synthesizeKajian } from "@/lib/chat";
@@ -29,7 +29,7 @@ const describeIfKey = hasApiKey ? describe : describe.skip;
 
 async function retrieve(question: string, k: [number, number], filters?: { year?: number }) {
   const [queryVector] = await embedTexts([question]);
-  return searchSimilarChunks(queryVector, question, k[0], k[1], filters);
+  return await searchSimilarChunks(queryVector, question, k[0], k[1], filters);
 }
 
 function assertValidSourceNumbers(usedSourceNumbers: number[], chunks: RetrievedChunk[]) {
@@ -134,9 +134,9 @@ describeIfKey("kajian mode — akurasi sintesis & kekuatan bukti (Gemini sungguh
 });
 
 describe("sanity: korpus produksi tersedia untuk tes akurasi", () => {
-  it("tabel documents & embeddings tidak kosong", () => {
-    const docCount = (db.prepare("SELECT COUNT(*) c FROM documents").get() as { c: number }).c;
-    const embCount = (db.prepare("SELECT COUNT(*) c FROM embeddings").get() as { c: number }).c;
+  it("tabel documents & embeddings tidak kosong", async () => {
+    const [{ c: docCount }] = await sql<{ c: number }[]>`SELECT COUNT(*)::int c FROM documents`;
+    const [{ c: embCount }] = await sql<{ c: number }[]>`SELECT COUNT(*)::int c FROM embeddings`;
     expect(docCount).toBeGreaterThan(0);
     expect(embCount).toBeGreaterThan(0);
   });

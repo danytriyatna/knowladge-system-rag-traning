@@ -1,8 +1,7 @@
 import { randomUUID } from "node:crypto";
-import fs from "node:fs/promises";
-import path from "node:path";
 import { NextResponse } from "next/server";
-import { db, pdfDir, type DocumentRecord, type ExtractionMethod } from "@/lib/db";
+import { sql, type DocumentRecord, type ExtractionMethod } from "@/lib/db";
+import { uploadPdf } from "@/lib/storage";
 import { extractText, getPageCount } from "@/lib/pdf";
 import { extractTextWithGemini } from "@/lib/gemini";
 import { requireUser, requireAdmin, logAudit, AuthError } from "@/lib/auth";
@@ -23,13 +22,11 @@ export async function GET() {
     throw err;
   }
 
-  const documents = db
-    .prepare(
-      `SELECT id, filename, extraction_method, page_count, uploaded_at,
-              title, authors, doi, published_year, volume, issue_number, topics, source
-       FROM documents ORDER BY uploaded_at DESC`
-    )
-    .all();
+  const documents = await sql`
+    SELECT id, filename, extraction_method, page_count, uploaded_at,
+           title, authors, doi, published_year, volume, issue_number, topics, source
+    FROM documents ORDER BY uploaded_at DESC
+  `;
   return NextResponse.json({ documents });
 }
 
@@ -93,8 +90,7 @@ export async function POST(request: Request) {
   }
 
   const id = randomUUID();
-  const storedPath = path.join(pdfDir, `${id}.pdf`);
-  await fs.writeFile(storedPath, buffer);
+  const storedPath = await uploadPdf(id, buffer);
 
   const record: DocumentRecord = {
     id,
@@ -117,19 +113,19 @@ export async function POST(request: Request) {
     synced_at: null,
   };
 
-  db.prepare(
-    `INSERT INTO documents (
-       id, filename, stored_path, extracted_text, extraction_method, page_count, uploaded_at,
-       title, authors, abstract, doi, published_year, volume, issue_number, topics, source,
-       ojs_article_id, synced_at
-     )
-     VALUES (
-       @id, @filename, @stored_path, @extracted_text, @extraction_method, @page_count, @uploaded_at,
-       @title, @authors, @abstract, @doi, @published_year, @volume, @issue_number, @topics, @source,
-       @ojs_article_id, @synced_at
-     )`
-  ).run(record);
-  logAudit(user.id, "manual_upload", record.id, record.filename);
+  await sql`
+    INSERT INTO documents (
+      id, filename, stored_path, extracted_text, extraction_method, page_count, uploaded_at,
+      title, authors, abstract, doi, published_year, volume, issue_number, topics, source,
+      ojs_article_id, synced_at
+    )
+    VALUES (
+      ${record.id}, ${record.filename}, ${record.stored_path}, ${record.extracted_text}, ${record.extraction_method}, ${record.page_count}, ${record.uploaded_at},
+      ${record.title}, ${record.authors}, ${record.abstract}, ${record.doi}, ${record.published_year}, ${record.volume}, ${record.issue_number}, ${record.topics}, ${record.source},
+      ${record.ojs_article_id}, ${record.synced_at}
+    )
+  `;
+  await logAudit(user.id, "manual_upload", record.id, record.filename);
 
   return NextResponse.json(
     {

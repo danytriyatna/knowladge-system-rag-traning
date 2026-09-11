@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { sql } from "@/lib/db";
 import type { HarvestItemResult } from "@/lib/harvest";
 import { requireAdmin, AuthError } from "@/lib/auth";
 
@@ -44,12 +44,10 @@ export async function GET() {
     throw err;
   }
 
-  const rows = db
-    .prepare(
-      `SELECT id, started_at, finished_at, new_documents_found, status, error_message, detail
-       FROM sync_runs ORDER BY started_at DESC LIMIT 20`
-    )
-    .all() as SyncRunRow[];
+  const rows = await sql<SyncRunRow[]>`
+    SELECT id, started_at, finished_at, new_documents_found, status, error_message, detail
+    FROM sync_runs ORDER BY started_at DESC LIMIT 20
+  `;
 
   const runs = rows.map((row) => ({
     id: row.id,

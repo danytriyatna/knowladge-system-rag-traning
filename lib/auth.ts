@@ -1,27 +1,18 @@
 import { randomUUID, randomBytes, scryptSync, timingSafeEqual, createHmac } from "node:crypto";
-import fs from "node:fs";
-import path from "node:path";
 import { cookies } from "next/headers";
-import { db, type UserRecord, type UserRole } from "./db";
+import { sql, type UserRecord, type UserRole } from "./db";
 
 export const SESSION_COOKIE = "jp_session";
 const SESSION_MAX_AGE_SECONDS = 7 * 24 * 60 * 60; // 7 hari
 
 function getSessionSecret(): string {
-  const fromEnv = process.env.SESSION_SECRET;
-  if (fromEnv) return fromEnv;
-
-  // Simpan secret yang di-generate sekali di storage/ (bukan committed ke git)
-  // supaya sesi tidak selalu invalid tiap kali server direstart tanpa perlu
-  // pengguna mengonfigurasi env var tambahan secara manual.
-  const secretPath = path.join(process.cwd(), "storage", "session-secret.txt");
-  if (fs.existsSync(secretPath)) {
-    return fs.readFileSync(secretPath, "utf8").trim();
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) {
+    // Filesystem produksi (Vercel) read-only, jadi tidak ada fallback tulis
+    // file seperti sebelumnya — env var ini wajib diset.
+    throw new Error("SESSION_SECRET belum diset di environment");
   }
-  const generated = randomBytes(32).toString("hex");
-  fs.mkdirSync(path.dirname(secretPath), { recursive: true });
-  fs.writeFileSync(secretPath, generated, "utf8");
-  return generated;
+  return secret;
 }
 
 export function hashPassword(password: string): string {
@@ -80,23 +71,23 @@ export function verifySessionToken(token: string | undefined): SessionPayload | 
 
 export const SESSION_COOKIE_MAX_AGE = SESSION_MAX_AGE_SECONDS;
 
-export function getUserById(id: string): UserRecord | undefined {
-  return db.prepare("SELECT * FROM users WHERE id = ?").get(id) as UserRecord | undefined;
+export async function getUserById(id: string): Promise<UserRecord | undefined> {
+  const rows = await sql<UserRecord[]>`SELECT * FROM users WHERE id = ${id}`;
+  return rows[0];
 }
 
-export function getUserByEmail(email: string): UserRecord | undefined {
-  return db
-    .prepare("SELECT * FROM users WHERE email = ?")
-    .get(email.toLowerCase()) as UserRecord | undefined;
+export async function getUserByEmail(email: string): Promise<UserRecord | undefined> {
+  const rows = await sql<UserRecord[]>`SELECT * FROM users WHERE email = ${email.toLowerCase()}`;
+  return rows[0];
 }
 
-export function createUser(input: {
+export async function createUser(input: {
   email: string;
   password: string;
   fullName: string;
   role: UserRole;
   unit?: string;
-}): UserRecord {
+}): Promise<UserRecord> {
   const record: UserRecord = {
     id: randomUUID(),
     email: input.email.toLowerCase(),
@@ -106,10 +97,10 @@ export function createUser(input: {
     unit: input.unit ?? null,
     created_at: new Date().toISOString(),
   };
-  db.prepare(
-    `INSERT INTO users (id, email, password_hash, full_name, role, unit, created_at)
-     VALUES (@id, @email, @password_hash, @full_name, @role, @unit, @created_at)`
-  ).run(record);
+  await sql`
+    INSERT INTO users (id, email, password_hash, full_name, role, unit, created_at)
+    VALUES (${record.id}, ${record.email}, ${record.password_hash}, ${record.full_name}, ${record.role}, ${record.unit}, ${record.created_at})
+  `;
   return record;
 }
 
@@ -118,17 +109,15 @@ export function createUser(input: {
  * Tanpa ini tidak ada cara masuk sama sekali di instalasi baru (tidak ada UI
  * pendaftaran mandiri — sesuai desain PRD, akun dibuat/diundang oleh admin).
  */
-export function ensureBootstrapAdmin(): void {
-  const { count } = db.prepare("SELECT COUNT(*) as count FROM users").get() as {
-    count: number;
-  };
+export async function ensureBootstrapAdmin(): Promise<void> {
+  const [{ count }] = await sql<{ count: number }[]>`SELECT COUNT(*)::int AS count FROM users`;
   if (count > 0) return;
 
   const email = process.env.ADMIN_EMAIL;
   const password = process.env.ADMIN_PASSWORD;
   if (!email || !password) return;
 
-  createUser({ email, password, fullName: "Administrator", role: "admin" });
+  await createUser({ email, password, fullName: "Administrator", role: "admin" });
 }
 
 /** Ambil user yang sedang login dari cookie sesi (Route Handler/Server Component). */
@@ -137,7 +126,7 @@ export async function getCurrentUser(): Promise<UserRecord | null> {
   const token = store.get(SESSION_COOKIE)?.value;
   const payload = verifySessionToken(token);
   if (!payload) return null;
-  return getUserById(payload.userId) ?? null;
+  return (await getUserById(payload.userId)) ?? null;
 }
 
 export class AuthError extends Error {
@@ -164,16 +153,14 @@ export async function requireAdmin(): Promise<UserRecord> {
   return user;
 }
 
-export function logAudit(userId: string, action: string, targetId?: string, detail?: string): void {
-  db.prepare(
-    `INSERT INTO audit_log (id, user_id, action, target_id, detail, created_at)
-     VALUES (@id, @user_id, @action, @target_id, @detail, @created_at)`
-  ).run({
-    id: randomUUID(),
-    user_id: userId,
-    action,
-    target_id: targetId ?? null,
-    detail: detail ?? null,
-    created_at: new Date().toISOString(),
-  });
+export async function logAudit(
+  userId: string,
+  action: string,
+  targetId?: string,
+  detail?: string
+): Promise<void> {
+  await sql`
+    INSERT INTO audit_log (id, user_id, action, target_id, detail, created_at)
+    VALUES (${randomUUID()}, ${userId}, ${action}, ${targetId ?? null}, ${detail ?? null}, ${new Date().toISOString()})
+  `;
 }

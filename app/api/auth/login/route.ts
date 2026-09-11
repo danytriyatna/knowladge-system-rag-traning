@@ -10,7 +10,7 @@ import {
 } from "@/lib/auth";
 
 export async function POST(request: Request) {
-  ensureBootstrapAdmin();
+  await ensureBootstrapAdmin();
 
   const body = await request.json().catch(() => null);
   const email = typeof body?.email === "string" ? body.email.trim() : "";
@@ -20,12 +20,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Email dan kata sandi wajib diisi" }, { status: 400 });
   }
 
-  const user = getUserByEmail(email);
+  const user = await getUserByEmail(email);
   if (!user || !verifyPassword(password, user.password_hash)) {
     return NextResponse.json({ error: "Email atau kata sandi salah" }, { status: 401 });
   }
 
-  logAudit(user.id, "login");
+  await logAudit(user.id, "login");
 
   const token = createSessionToken(user.id, user.role);
   const response = NextResponse.json({

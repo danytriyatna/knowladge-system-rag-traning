@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
   try {
     const outcome = await runHarvest({ limit });
-    logAudit(user.id, "sync_triggered", outcome.syncRunId, `status=${outcome.status}`);
+    await logAudit(user.id, "sync_triggered", outcome.syncRunId, `status=${outcome.status}`);
     return NextResponse.json(outcome);
   } catch (err) {
     if (err instanceof HarvestAlreadyRunningError) {
