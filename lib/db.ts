@@ -12,7 +12,21 @@ if (!connectionString) {
   throw new Error("DATABASE_URL_POOLED belum diset di environment");
 }
 
-const sql = global.__sql ?? postgres(connectionString, { prepare: false });
+// max:1 sesuai rekomendasi Supabase untuk serverless — tiap cold start
+// Vercel bikin instance postgres.js baru, dan tanpa ini tiap instance
+// membuka pool default (10 koneksi) yang menumpuk lintas cold start sampai
+// slot koneksi Supavisor habis (request jadi hang, bukan error, menunggu
+// slot yang tidak pernah kosong). idle_timeout melepas koneksi menganggur
+// balik ke pooler, connect_timeout mencegah hang tanpa batas kalau pooler
+// sendiri sedang penuh.
+const sql =
+  global.__sql ??
+  postgres(connectionString, {
+    prepare: false,
+    max: 1,
+    idle_timeout: 20,
+    connect_timeout: 10,
+  });
 if (process.env.NODE_ENV !== "production") {
   global.__sql = sql;
 }
