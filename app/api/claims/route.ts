@@ -10,8 +10,9 @@ import {
 } from "@/lib/claims";
 
 // Panen memanggil model sekali per potongan kandidat, jadi butuh jendela
-// waktu lebih panjang daripada endpoint biasa.
-export const maxDuration = 800;
+// waktu lebih panjang daripada endpoint biasa — dibatasi 300 (maksimum
+// plan Hobby Vercel; naikkan bila plan di-upgrade).
+export const maxDuration = 300;
 
 function authError(err: unknown) {
   if (err instanceof AuthError) {
