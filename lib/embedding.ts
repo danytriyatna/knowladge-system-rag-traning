@@ -6,9 +6,14 @@ import {
 } from "@huggingface/transformers";
 
 // Model & tensor dijalankan sepenuhnya lokal di server (ONNX Runtime),
-// tidak ada panggilan API eksternal. Model didownload sekali lalu di-cache
-// di storage/models, jadi setelahnya bisa jalan offline.
-env.cacheDir = path.join(process.cwd(), "storage", "models");
+// tidak ada panggilan API eksternal. Lokal: di-cache di storage/models
+// supaya bisa jalan offline setelah didownload sekali. Vercel: filesystem
+// selain /tmp read-only, dan /tmp tidak persisten antar cold start — jadi
+// modelnya redownload tiap cold start di sana, tidak bisa dihindari tanpa
+// pindah ke API embedding hosted (di luar cakupan migrasi ini).
+env.cacheDir = process.env.VERCEL
+  ? "/tmp/models"
+  : path.join(process.cwd(), "storage", "models");
 
 export const EMBEDDING_MODEL = "Xenova/all-MiniLM-L6-v2";
 export const EMBEDDING_DIMENSIONS = 384;
