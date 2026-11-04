@@ -7,10 +7,10 @@
   --muted: #6b6e76;
   --border: #e5e4df;
   --border-strong: #d4d2ca;
-  --accent: #3b4fd9;
+  --accent: #0b2545;
   --accent-foreground: #ffffff;
-  --accent-soft: #eceeff;
-  --accent-text: #2635a3;
+  --accent-soft: #fcefe3;
+  --accent-text: #c13d0d;
 
   --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);

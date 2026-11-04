@@ -530,9 +530,9 @@ export default function Home() {
     <div className="flex min-h-screen w-full bg-background text-foreground">
       {/* Desktop sidebar */}
       <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-surface md:flex">
-        <div className="border-b border-border px-5 py-5">
-          <div className="text-sm font-semibold tracking-tight">JP-Insight</div>
-          <div className="text-xs text-muted">Jurnal Permukiman</div>
+        <div className="border-b-2 border-[#c13d0d] bg-[#0b2545] px-5 py-5">
+          <div className="text-sm font-bold tracking-tight text-white">JP-Insight</div>
+          <div className="text-xs text-amber-200/90 font-medium">Jurnal Permukiman</div>
         </div>
         <nav className="flex flex-1 flex-col gap-0.5 p-3">
           {visibleNavItems.map((item) => (
