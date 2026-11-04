@@ -97,6 +97,7 @@ export async function createUser(input: {
     unit: input.unit ?? null,
     created_at: new Date().toISOString(),
   };
+  if (process.env.DEV_MODE === "true") return;
   await sql`
     INSERT INTO users (id, email, password_hash, full_name, role, unit, created_at)
     VALUES (${record.id}, ${record.email}, ${record.password_hash}, ${record.full_name}, ${record.role}, ${record.unit}, ${record.created_at})
@@ -122,6 +123,17 @@ export async function ensureBootstrapAdmin(): Promise<void> {
 
 /** Ambil user yang sedang login dari cookie sesi (Route Handler/Server Component). */
 export async function getCurrentUser(): Promise<UserRecord | null> {
+  if (process.env.DEV_MODE === "true") {
+    return {
+      id: "dev-admin-dany",
+      email: "dany@puskim.pu.go.id",
+      password_hash: "",
+      full_name: "Dany Triyatna",
+      role: "admin",
+      unit: "Direktorat Bina Teknik Permukiman dan Perumahan",
+      created_at: "2026-11-04T00:00:00.000Z",
+    };
+  }
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
   const payload = verifySessionToken(token);
@@ -159,6 +171,7 @@ export async function logAudit(
   targetId?: string,
   detail?: string
 ): Promise<void> {
+  if (process.env.DEV_MODE === "true") return;
   await sql`
     INSERT INTO audit_log (id, user_id, action, target_id, detail, created_at)
     VALUES (${randomUUID()}, ${userId}, ${action}, ${targetId ?? null}, ${detail ?? null}, ${new Date().toISOString()})

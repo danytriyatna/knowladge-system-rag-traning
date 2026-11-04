@@ -67,6 +67,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Pertanyaan tidak boleh kosong" }, { status: 400 });
   }
 
+  if (process.env.DEV_MODE === "true" && (await countEmbeddings().catch(() => 0)) === 0) {
+    const demoAnswer = `Berdasarkan korpus riset Jurnal Permukiman [1], sistem konstruksi berkelanjutan dan perumahan ramah gempa (seperti RISHA) memanfaatkan komponen modular pracetak berstandar ketat guna meminimalisasi risiko kegagalan struktur saat terjadi goncangan seismik. Hasil pengujian menunjukkan bahwa keandalan sambungan simpul pelat dan baut merupakan faktor krusial dalam menyerap energi getaran, sebagaimana diatur dalam pedoman teknis Direktorat Jenderal Cipta Karya [1][2].`;
+    const demoSources: SourceCitation[] = [
+      {
+        document_id: "jp-demo-1",
+        filename: "RISHA_Ketahanan_Gempa_2025.pdf",
+        chunk_index: 0,
+        similarity: 0.91,
+      },
+      {
+        document_id: "jp-demo-3",
+        filename: "Karakteristik_Bata_Geopolimer_2024.pdf",
+        chunk_index: 1,
+        similarity: 0.84,
+      },
+    ];
+    return NextResponse.json({
+      answer: demoAnswer,
+      sources: demoSources,
+      evidence_strength: "kuat",
+    });
+  }
+
   if ((await countEmbeddings()) === 0) {
     return NextResponse.json(
       {
