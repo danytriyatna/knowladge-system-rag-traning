@@ -37,7 +37,7 @@ export default function LoginPage() {
       <div className="h-1.5 w-full bg-gradient-to-r from-[#B93A0C] via-[#C13D0D] to-[#962D08]" />
 
       <div className="flex flex-1 items-center justify-center px-4 py-10">
-        <div className="fresh-card grid w-full max-w-4xl overflow-hidden rounded-3xl border-t-[3px] border-t-[#C13D0D] md:grid-cols-12">
+        <div className="fresh-card grid w-full max-w-4xl overflow-hidden rounded-3xl md:grid-cols-12">
           <div className="flex flex-col justify-between bg-gradient-to-br from-[#B93A0C] via-[#C13D0D] to-[#8C2806] p-8 text-white md:col-span-5 sm:p-10">
             <div>
               <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white p-2 shadow-md">
@@ -58,7 +58,7 @@ export default function LoginPage() {
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-white/85">
                 Sistem referensi ilmiah, analisis peraturan dirujuk, celah riset, dan asistensi
-                kajian berbasis RAG Jurnal Permukiman.
+                kajian berbasis arsip terbit Jurnal Permukiman.
               </p>
             </div>
 
