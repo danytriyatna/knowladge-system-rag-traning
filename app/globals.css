@@ -1,16 +1,16 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7f7f5;
-  --surface: #ffffff;
-  --foreground: #1a1d24;
-  --muted: #6b6e76;
-  --border: #e5e4df;
-  --border-strong: #d4d2ca;
-  --accent: #3b4fd9;
-  --accent-foreground: #ffffff;
-  --accent-soft: #eceeff;
-  --accent-text: #2635a3;
+  --background: #F3F6FA;
+  --surface: #FFFFFF;
+  --foreground: #1C1917;
+  --muted: #64748B;
+  --border: #D9E1EC;
+  --border-strong: #C2CEE0;
+  --accent: #123B72;
+  --accent-foreground: #FFFFFF;
+  --accent-soft: #EEF4FC;
+  --accent-text: #0B254B;
 
   --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
@@ -27,29 +27,30 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-accent-soft: var(--accent-soft);
   --color-accent-text: var(--accent-text);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #101216;
-    --surface: #171a1f;
-    --foreground: #e7e6e1;
-    --muted: #9ba0a8;
-    --border: #262931;
-    --border-strong: #343841;
-    --accent: #8b9bff;
-    --accent-foreground: #10121c;
-    --accent-soft: #202544;
-    --accent-text: #b7c0ff;
-  }
+  --font-sans: var(--font-plus-jakarta), "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), "JetBrains Mono", monospace;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans);
+}
+
+@layer components {
+  .puskim-canvas {
+    background-color: #F3F6FA;
+    background-image:
+      linear-gradient(to right, rgba(15, 44, 89, 0.045) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(15, 44, 89, 0.045) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .fresh-card {
+    background: #FFFFFF;
+    border: 1px solid #D9E1EC;
+    box-shadow: 0 1px 3px rgba(15, 44, 89, 0.05), 0 6px 18px rgba(15, 44, 89, 0.06);
+  }
 }
 
 ::selection {

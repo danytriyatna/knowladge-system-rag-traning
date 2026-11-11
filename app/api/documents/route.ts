@@ -5,6 +5,7 @@ import { uploadPdf } from "@/lib/storage";
 import { extractText, getPageCount } from "@/lib/pdf";
 import { extractTextWithGemini } from "@/lib/gemini";
 import { requireUser, requireAdmin, logAudit, AuthError } from "@/lib/auth";
+import { listPublishedDocumentSummaries } from "@/lib/publishedLocal";
 
 const MAX_SIZE_BYTES = 25 * 1024 * 1024;
 
@@ -20,6 +21,12 @@ export async function GET() {
       return NextResponse.json({ error: err.message }, { status: err.status });
     }
     throw err;
+  }
+
+  if (process.env.DEV_MODE === "true") {
+    return NextResponse.json({
+      documents: listPublishedDocumentSummaries(),
+    });
   }
 
   const documents = await sql`

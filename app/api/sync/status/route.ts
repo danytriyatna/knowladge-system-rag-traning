@@ -44,6 +44,22 @@ export async function GET() {
     throw err;
   }
 
+  if (process.env.DEV_MODE === "true") {
+    return NextResponse.json({
+      runs: [
+        {
+          id: "sync-run-demo-1",
+          started_at: new Date(Date.now() - 7200000).toISOString(),
+          finished_at: new Date(Date.now() - 7150000).toISOString(),
+          new_documents_found: 3,
+          status: "completed",
+          summary: "Sinkronisasi OAI-PMH berhasil: 3 naskah baru terindeks",
+          raw_status: "completed",
+        },
+      ],
+    });
+  }
+
   const rows = await sql<SyncRunRow[]>`
     SELECT id, started_at, finished_at, new_documents_found, status, error_message, detail
     FROM sync_runs ORDER BY started_at DESC LIMIT 20

@@ -2,19 +2,29 @@ import { NextResponse } from "next/server";
 import { runHarvest, HarvestAlreadyRunningError } from "@/lib/harvest";
 import { requireAdmin, logAudit, AuthError } from "@/lib/auth";
 
-// Harvest penuh (ratusan naskah, unduh + ekstrak + chunk + embed per naskah)
-// bisa memakan waktu lama secara sinkron.
 export const maxDuration = 300;
 
 export async function POST(request: Request) {
-  let user;
-  try {
-    user = await requireAdmin();
-  } catch (err) {
-    if (err instanceof AuthError) {
-      return NextResponse.json({ error: err.message }, { status: err.status });
+  let userId = "cron_system";
+
+  // Cek apakah dipanggil oleh Cron Job otomatis (Vercel Cron / Scheduled Webhook)
+  const authHeader = request.headers.get("authorization");
+  const cronSecret = process.env.CRON_SECRET;
+  const isCron = Boolean(
+    cronSecret &&
+      (authHeader === `Bearer ${cronSecret}` || request.headers.get("x-cron-key") === cronSecret),
+  );
+
+  if (!isCron) {
+    try {
+      const user = await requireAdmin();
+      userId = user.id;
+    } catch (err) {
+      if (err instanceof AuthError) {
+        return NextResponse.json({ error: err.message }, { status: err.status });
+      }
+      throw err;
     }
-    throw err;
   }
 
   const body = await request.json().catch(() => ({}));
@@ -23,7 +33,11 @@ export async function POST(request: Request) {
 
   try {
     const outcome = await runHarvest({ limit });
-    await logAudit(user.id, "sync_triggered", outcome.syncRunId, `status=${outcome.status}`);
+    try {
+      await logAudit(userId, "sync_triggered", outcome.syncRunId, `status=${outcome.status}`);
+    } catch {
+      // Abaikan jika log audit gagal saat cron
+    }
     return NextResponse.json(outcome);
   } catch (err) {
     if (err instanceof HarvestAlreadyRunningError) {

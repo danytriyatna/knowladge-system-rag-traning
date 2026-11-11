@@ -8,7 +8,7 @@
 
 /** Jawaban baku ketika tidak ada satu pun sumber yang bisa menopang jawaban. */
 export const NO_SOURCE_ANSWER =
-  "Informasi yang diminta tidak ditemukan di dokumen yang tersedia.";
+  "Informasi yang diminta tidak ditemukan pada jurnal yang sudah dipublikasikan.";
 
 /**
  * Buang nomor sumber yang tidak menunjuk konteks mana pun.
