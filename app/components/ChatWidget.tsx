@@ -36,11 +36,11 @@ export default function ChatWidget({ onOpen }: { onOpen: () => void }) {
   return (
     <div className="widget-enter fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3">
       {showCallout && (
-        <div className="callout-enter relative max-w-[250px] rounded-2xl rounded-br-sm border border-[#F4D4C9] bg-white px-4 py-3 text-sm text-stone-800 shadow-lg">
+        <div className="callout-enter relative max-w-[250px] rounded-2xl rounded-br-sm border border-[#C7D8EE] bg-white px-4 py-3 text-sm text-stone-800 shadow-lg">
           <button
             onClick={dismissCallout}
             aria-label="Tutup"
-            className="press absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-[#DFD9D2] bg-white text-[10px] text-stone-500 hover:text-[#C13D0D]"
+            className="press absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-[#D9E1EC] bg-white text-[10px] text-stone-500 hover:text-[#123B72]"
           >
             &#10005;
           </button>
@@ -55,7 +55,7 @@ export default function ChatWidget({ onOpen }: { onOpen: () => void }) {
       <button
         onClick={handleOpen}
         aria-label="Buka Chat & Kajian"
-        className={`press relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#D14715] to-[#A0320A] text-white shadow-lg ring-2 ring-white/80 hover:brightness-105 ${
+        className={`press relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#164687] to-[#0B254B] text-white shadow-lg ring-2 ring-[#EAB308]/80 hover:brightness-110 ${
           showCallout ? "widget-bounce" : ""
         }`}
       >

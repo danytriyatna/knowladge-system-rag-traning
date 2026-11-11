@@ -1,16 +1,16 @@
 @import "tailwindcss";
 
 :root {
-  --background: #F2EFE9;
+  --background: #F3F6FA;
   --surface: #FFFFFF;
   --foreground: #1C1917;
   --muted: #64748B;
-  --border: #DFD9D2;
-  --border-strong: #CFC7BD;
-  --accent: #C13D0D;
+  --border: #D9E1EC;
+  --border-strong: #C2CEE0;
+  --accent: #123B72;
   --accent-foreground: #FFFFFF;
-  --accent-soft: #FDF4F0;
-  --accent-text: #A0320A;
+  --accent-soft: #EEF4FC;
+  --accent-text: #0B254B;
 
   --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
@@ -39,15 +39,17 @@ body {
 
 @layer components {
   .puskim-canvas {
-    background-color: #F2EFE9;
-    background-image: radial-gradient(#DDD6CC 0.9px, transparent 0.9px);
-    background-size: 18px 18px;
+    background-color: #F3F6FA;
+    background-image:
+      linear-gradient(to right, rgba(15, 44, 89, 0.045) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(15, 44, 89, 0.045) 1px, transparent 1px);
+    background-size: 24px 24px;
   }
 
   .fresh-card {
     background: #FFFFFF;
-    border: 1px solid #DFD9D2;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 6px 18px rgba(193, 61, 13, 0.045);
+    border: 1px solid #D9E1EC;
+    box-shadow: 0 1px 3px rgba(15, 44, 89, 0.05), 0 6px 18px rgba(15, 44, 89, 0.06);
   }
 }
 

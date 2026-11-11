@@ -34,32 +34,51 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen w-full flex-col puskim-canvas text-foreground">
-      <div className="h-1.5 w-full bg-gradient-to-r from-[#B93A0C] via-[#C13D0D] to-[#962D08]" />
+      <div className="h-1.5 w-full border-b border-[#EAB308]/75 bg-gradient-to-r from-[#0B2347] via-[#123B72] to-[#081A36]" />
 
       <div className="flex flex-1 items-center justify-center px-4 py-10">
         <div className="fresh-card grid w-full max-w-4xl overflow-hidden rounded-3xl md:grid-cols-12">
-          <div className="flex flex-col justify-between bg-gradient-to-br from-[#B93A0C] via-[#C13D0D] to-[#8C2806] p-8 text-white md:col-span-5 sm:p-10">
+          <div className="flex flex-col justify-between bg-gradient-to-br from-[#0E3161] via-[#123B72] to-[#081A36] p-8 text-white md:col-span-5 sm:p-10">
             <div>
-              <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white p-2 shadow-md">
-                <Image
-                  src="/logo-pu.png"
-                  alt="Logo PU"
-                  width={44}
-                  height={44}
-                  className="object-contain"
-                  priority
-                />
+              <div className="flex items-center gap-3">
+                <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-white p-2 shadow-md">
+                  <Image
+                    src="/logo-pu.png"
+                    alt="Logo PU"
+                    width={44}
+                    height={44}
+                    className="object-contain"
+                    priority
+                  />
+                </div>
+                <span className="rounded-full border border-[#F2C94C]/45 bg-[#F2C94C]/15 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#FDE68A]">
+                  Knowledge &amp; Riset
+                </span>
               </div>
-              <p className="mt-5 text-xs font-bold uppercase tracking-widest text-white/75">
+              <p className="mt-5 text-xs font-bold uppercase tracking-widest text-blue-200/80">
                 Ekosistem Jurnal Permukiman
               </p>
               <h2 className="mt-1.5 text-2xl font-extrabold tracking-tight text-white">
                 JP-Insight
               </h2>
-              <p className="mt-3 text-sm leading-relaxed text-white/85">
+              <p className="mt-3 text-sm leading-relaxed text-blue-100/90">
                 Sistem referensi ilmiah, analisis peraturan dirujuk, celah riset, dan asistensi
                 kajian berbasis arsip terbit Jurnal Permukiman.
               </p>
+              <ul className="mt-4 space-y-1.5 text-xs text-blue-100/90">
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#F2C94C]" aria-hidden="true" />
+                  <span>Referensi artikel terbit OJS</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#F2C94C]" aria-hidden="true" />
+                  <span>Penelusuran regulasi &amp; SNI PU</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#F2C94C]" aria-hidden="true" />
+                  <span>Analisis celah riset ilmiah</span>
+                </li>
+              </ul>
             </div>
 
             <div className="mt-8 border-t border-white/20 pt-4 text-xs text-white/80">
@@ -91,7 +110,7 @@ export default function LoginPage() {
             <div className="mb-6 flex items-center justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2.5">
-                  <span className="h-5 w-1.5 rounded-full bg-[#C13D0D]" aria-hidden="true" />
+                  <span className="h-5 w-1.5 rounded-full bg-gradient-to-b from-[#123B72] to-[#EAB308]" aria-hidden="true" />
                   <h1 className="text-2xl font-bold tracking-tight text-stone-900">
                     Masuk ke JP-Insight
                   </h1>
@@ -117,7 +136,7 @@ export default function LoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="rounded-xl border border-[#DFD9D2] bg-[#FAF8F5] px-4 py-2.5 text-sm text-stone-900 outline-none transition-colors focus:border-[#C13D0D] focus:bg-white focus:ring-1 focus:ring-[#C13D0D]"
+                  className="rounded-xl border border-[#D9E1EC] bg-[#F6F9FD] px-4 py-2.5 text-sm text-stone-900 outline-none transition-colors focus:border-[#123B72] focus:bg-white focus:ring-1 focus:ring-[#123B72]"
                   placeholder="nama@pu.go.id"
                 />
               </div>
@@ -128,7 +147,7 @@ export default function LoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="rounded-xl border border-[#DFD9D2] bg-[#FAF8F5] px-4 py-2.5 text-sm text-stone-900 outline-none transition-colors focus:border-[#C13D0D] focus:bg-white focus:ring-1 focus:ring-[#C13D0D]"
+                  className="rounded-xl border border-[#D9E1EC] bg-[#F6F9FD] px-4 py-2.5 text-sm text-stone-900 outline-none transition-colors focus:border-[#123B72] focus:bg-white focus:ring-1 focus:ring-[#123B72]"
                   placeholder="••••••••"
                 />
               </div>
@@ -136,7 +155,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="press mt-2 w-full rounded-xl bg-gradient-to-r from-[#D14715] to-[#A0320A] px-4 py-3 text-sm font-bold text-white shadow-sm transition-all hover:brightness-105 disabled:opacity-50"
+                className="press mt-2 w-full rounded-xl bg-gradient-to-r from-[#164687] to-[#0B254B] px-4 py-3 text-sm font-bold text-white shadow-sm transition-all hover:brightness-110 disabled:opacity-50"
               >
                 {loading ? "Memproses..." : "Masuk"}
               </button>

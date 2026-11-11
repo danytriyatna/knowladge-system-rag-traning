@@ -66,7 +66,7 @@
       color: #ffffff;
       white-space: nowrap;
       paint-order: stroke fill;
-      -webkit-text-stroke: 4px #6B1E05;
+      -webkit-text-stroke: 4px #081A36;
       text-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
     }
     .jp-widget-header-logo {
@@ -102,7 +102,7 @@
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
     .jp-widget-header {
-      background: linear-gradient(135deg, #B93A0C 0%, #8C2806 100%);
+      background: linear-gradient(135deg, #0E3161 0%, #081A36 100%);
       color: #ffffff;
       padding: 14px 18px;
       display: flex;
@@ -120,13 +120,13 @@
     }
     .jp-widget-header-sub {
       font-size: 11px;
-      color: #FDE8DF;
+      color: #DBEAFE;
       font-weight: normal;
     }
     .jp-widget-close {
       background: none;
       border: none;
-      color: #FDE8DF;
+      color: #DBEAFE;
       font-size: 20px;
       cursor: pointer;
       padding: 4px;
@@ -140,7 +140,7 @@
       flex: 1;
       overflow-y: auto;
       padding: 16px;
-      background: #F7F5F0;
+      background: #F3F6FA;
       display: flex;
       flex-direction: column;
       gap: 12px;
@@ -157,26 +157,26 @@
       align-self: flex-start;
       background: #ffffff;
       color: #1F2937;
-      border: 1px solid #E5E0D8;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      border: 1px solid #D9E1EC;
+      box-shadow: 0 1px 3px rgba(15, 44, 89, 0.06);
     }
     .jp-widget-msg-user {
       align-self: flex-end;
-      background: #C13D0D;
+      background: #123B72;
       color: #ffffff;
     }
     .jp-widget-source-card {
       margin-top: 8px;
       padding: 8px 10px;
-      background: #FAF8F4;
-      border-left: 3px solid #C13D0D;
+      background: #F4F7FC;
+      border-left: 3px solid #123B72;
       border-radius: 6px;
       font-size: 11px;
       color: #4B5563;
     }
     .jp-widget-source-title {
       font-weight: 600;
-      color: #8C2806;
+      color: #0B254B;
       margin-bottom: 2px;
     }
     .jp-widget-source-meta {
@@ -189,7 +189,7 @@
       margin-top: 4px;
       font-size: 10.5px;
       font-weight: 600;
-      color: #C13D0D;
+      color: #123B72;
       text-decoration: none;
     }
     .jp-widget-source-link:hover {
@@ -202,30 +202,30 @@
       margin-top: 8px;
     }
     .jp-widget-pill {
-      background: #FAF4EF;
-      color: #8C2806;
+      background: #EEF4FC;
+      color: #0B254B;
       padding: 4px 10px;
       border-radius: 20px;
       font-size: 11px;
       cursor: pointer;
-      border: 1px solid #E8CFC4;
+      border: 1px solid #C7D8EE;
       transition: all 0.15s;
     }
     .jp-widget-pill:hover {
-      background: #C13D0D;
+      background: #123B72;
       color: #ffffff;
-      border-color: #C13D0D;
+      border-color: #123B72;
     }
     .jp-widget-footer {
       padding: 12px;
       background: #ffffff;
-      border-top: 1px solid #E5E0D8;
+      border-top: 1px solid #D9E1EC;
       display: flex;
       gap: 8px;
     }
     .jp-widget-input {
       flex: 1;
-      border: 1px solid #D6D0C4;
+      border: 1px solid #C2CEE0;
       border-radius: 8px;
       padding: 8px 12px;
       font-size: 13px;
@@ -233,10 +233,10 @@
       transition: border-color 0.15s;
     }
     .jp-widget-input:focus {
-      border-color: #C13D0D;
+      border-color: #123B72;
     }
     .jp-widget-send {
-      background: #C13D0D;
+      background: #123B72;
       color: #ffffff;
       border: none;
       border-radius: 8px;
@@ -247,13 +247,13 @@
       transition: background 0.15s;
     }
     .jp-widget-send:hover {
-      background: #A0320A;
+      background: #0B254B;
     }
     .jp-widget-loading {
       display: inline-block;
       width: 14px;
       height: 14px;
-      border: 2px solid #FDE8DF;
+      border: 2px solid #DBEAFE;
       border-top-color: #ffffff;
       border-radius: 50%;
       animation: jpWidgetSpin 0.7s linear infinite;

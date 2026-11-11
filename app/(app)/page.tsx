@@ -537,8 +537,8 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen w-full flex-col puskim-canvas text-foreground">
-      {/* Unified Puskim Merah Bata Top Header (Logo PU kiri + KEMENPU pill kanan) */}
-      <header className="sticky top-0 z-20 border-b border-[#8C2806]/60 bg-gradient-to-r from-[#B93A0C] via-[#C13D0D] to-[#962D08] shadow-sm">
+      {/* Unified PU Navy + Gold Top Header (Logo PU kiri + KEMENPU pill kanan) */}
+      <header className="sticky top-0 z-20 border-b-2 border-[#EAB308]/85 bg-gradient-to-r from-[#0B2347] via-[#123B72] to-[#081A36] shadow-sm">
         <div className="flex w-full items-center justify-between gap-4 px-4 py-2.5 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-xs">
@@ -555,8 +555,8 @@ export default function Home() {
               <p className="text-base font-extrabold tracking-tight text-white uppercase">
                 JP-Insight
               </p>
-              <p className="text-[11px] font-medium tracking-wide text-white/85">
-                Jurnal Permukiman
+              <p className="text-[11px] font-medium tracking-wide text-[#FDE68A]">
+                Knowledge &amp; Riset · Jurnal Permukiman
               </p>
             </div>
           </div>
@@ -594,11 +594,11 @@ export default function Home() {
       </header>
 
       <div className="flex min-w-0 flex-1">
-        {/* Desktop sidebar (Merah Bata Puskim gradient matching OJS Backend) */}
-        <aside className="hidden w-60 shrink-0 flex-col justify-between border-r border-[#752004] bg-gradient-to-b from-[#B93A0C] to-[#8C2806] p-3.5 text-white shadow-lg md:flex">
+        {/* Desktop sidebar (Deep PU Navy + Gold active accent) */}
+        <aside className="hidden w-60 shrink-0 flex-col justify-between border-r border-[#081933] bg-gradient-to-b from-[#0E3161] to-[#081A36] p-3.5 text-white shadow-lg md:flex">
           <nav className="flex flex-col gap-1">
-            <p className="px-3 pb-1.5 pt-1 text-[10.5px] font-extrabold uppercase tracking-wider text-white/60">
-              Menu Utama
+            <p className="px-3 pb-1.5 pt-1 text-[10.5px] font-extrabold uppercase tracking-wider text-blue-200/65">
+              Konsol Riset
             </p>
             {visibleNavItems.map((item) => {
               const isActive = pageTab === item.tab;
@@ -608,8 +608,8 @@ export default function Home() {
                   onClick={() => setPageTab(item.tab)}
                   className={`flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-left text-sm transition-all duration-150 ${
                     isActive
-                      ? "bg-white font-bold text-[#C13D0D] shadow-md"
-                      : "font-medium text-white/90 hover:translate-x-0.5 hover:bg-black/20 hover:text-white"
+                      ? "border-l-4 border-[#EAB308] bg-white font-bold text-[#0F2C59] shadow-md"
+                      : "font-medium text-blue-100/90 hover:translate-x-0.5 hover:bg-white/10 hover:text-white"
                   }`}
                 >
                   {item.icon}
@@ -680,7 +680,7 @@ export default function Home() {
                 <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
                   <div className="flex items-start gap-3">
                     <span
-                      className="mt-1 h-7 w-1.5 shrink-0 rounded-full bg-gradient-to-b from-[#D14715] to-[#8C2806]"
+                      className="mt-1 h-7 w-1.5 shrink-0 rounded-full bg-gradient-to-b from-[#123B72] to-[#EAB308]"
                       aria-hidden="true"
                     />
                     <div>
@@ -694,8 +694,8 @@ export default function Home() {
                       </p>
                     </div>
                   </div>
-                  <span className="inline-flex items-center gap-2 self-start rounded-full border border-[#F4D4C9] bg-[#FDF4F0] px-3.5 py-1.5 text-xs font-semibold text-[#A0320A] shadow-xs sm:self-auto">
-                    <span className="h-2 w-2 rounded-full bg-[#C13D0D]" aria-hidden="true" />
+                  <span className="inline-flex items-center gap-2 self-start rounded-full border border-[#C7D8EE] bg-[#EEF4FC] px-3.5 py-1.5 text-xs font-semibold text-[#0B254B] shadow-xs sm:self-auto">
+                    <span className="h-2 w-2 rounded-full bg-[#123B72]" aria-hidden="true" />
                     {documents.length} Dokumen Terindeks
                   </span>
                 </div>
@@ -704,19 +704,19 @@ export default function Home() {
                   {isAdmin && (
                     <form
                       onSubmit={handleUpload}
-                      className="fresh-card flex flex-col gap-4 rounded-2xl border-t-[3px] border-t-[#C13D0D] p-5 xl:col-span-4"
+                      className="fresh-card flex flex-col gap-4 rounded-2xl border-t-[3px] border-t-[#123B72] p-5 xl:col-span-4"
                     >
                       <div>
                         <h2 className="text-sm font-bold text-stone-900">Upload PDF Manual</h2>
                         <p className="mt-0.5 text-xs text-stone-500">
-                          Tambahkan dokumen PDF baru ke sistem RAG JP-Insight.
+                          Tambahkan dokumen PDF baru ke arsip riset JP-Insight.
                         </p>
                       </div>
                       <input
                         ref={fileInputRef}
                         type="file"
                         accept="application/pdf"
-                        className="rounded-xl border border-dashed border-[#DFD9D2] bg-[#FAF8F5] p-3 text-sm text-stone-800 file:mr-3 file:rounded-lg file:border file:border-[#F4D4C9] file:bg-[#FDF4F0] file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-[#A0320A] hover:file:bg-[#C13D0D] hover:file:text-white"
+                        className="rounded-xl border border-dashed border-[#C2CEE0] bg-[#F6F9FD] p-3 text-sm text-stone-800 file:mr-3 file:rounded-lg file:border file:border-[#C7D8EE] file:bg-[#EEF4FC] file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-[#0B254B] hover:file:bg-[#123B72] hover:file:text-white"
                       />
 
                       <div className="flex flex-col gap-2">
@@ -729,7 +729,7 @@ export default function Home() {
                               value="local"
                               checked={mode === "local"}
                               onChange={() => setMode("local")}
-                              className="accent-[#C13D0D]"
+                              className="accent-[#123B72]"
                             />
                             Lokal (teks asli PDF)
                           </label>
@@ -740,7 +740,7 @@ export default function Home() {
                               value="gemini"
                               checked={mode === "gemini"}
                               onChange={() => setMode("gemini")}
-                              className="accent-[#C13D0D]"
+                              className="accent-[#123B72]"
                             />
                             Gemini (PDF scan/gambar)
                           </label>
@@ -757,7 +757,7 @@ export default function Home() {
                       <button
                         type="submit"
                         disabled={loading}
-                        className="press w-full rounded-xl bg-gradient-to-r from-[#D14715] to-[#A0320A] px-5 py-2.5 text-sm font-bold text-white shadow-xs transition-all hover:brightness-105 disabled:opacity-50"
+                        className="press w-full rounded-xl bg-gradient-to-r from-[#164687] to-[#0B254B] px-5 py-2.5 text-sm font-bold text-white shadow-xs transition-all hover:brightness-110 disabled:opacity-50"
                       >
                         {loading ? `Memproses... (${elapsedSeconds}s)` : "Upload Dokumen"}
                       </button>
@@ -777,15 +777,15 @@ export default function Home() {
                         <h2 className="text-xs font-bold uppercase tracking-wide text-stone-500">
                           Menampilkan {filteredDocuments.length} dari {documents.length} dokumen
                         </h2>
-                        <div className="flex gap-1 rounded-full border border-[#DFD9D2] bg-[#FAF8F5] p-0.5">
+                        <div className="flex gap-1 rounded-full border border-[#D9E1EC] bg-[#F6F9FD] p-0.5">
                           {(["all", "ojs_harvest", "manual_upload"] as const).map((f) => (
                             <button
                               key={f}
                               onClick={() => setDocSourceFilter(f)}
                               className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
                                 docSourceFilter === f
-                                  ? "bg-gradient-to-r from-[#D14715] to-[#A0320A] text-white shadow-xs"
-                                  : "text-stone-600 hover:text-[#A0320A]"
+                                  ? "bg-gradient-to-r from-[#164687] to-[#0B254B] text-white shadow-xs"
+                                  : "text-stone-600 hover:text-[#0B254B]"
                               }`}
                             >
                               {f === "all" ? "Semua" : SOURCE_LABEL[f]}
@@ -797,10 +797,10 @@ export default function Home() {
                         value={docSearch}
                         onChange={(e) => setDocSearch(e.target.value)}
                         placeholder="Cari judul, penulis, nama file, atau DOI..."
-                        className="rounded-xl border border-[#DFD9D2] bg-[#FAF8F5] px-3.5 py-2 text-sm text-stone-900 outline-none transition-colors focus:border-[#C13D0D] focus:bg-white focus:ring-1 focus:ring-[#C13D0D]"
+                        className="rounded-xl border border-[#D9E1EC] bg-[#F6F9FD] px-3.5 py-2 text-sm text-stone-900 outline-none transition-colors focus:border-[#123B72] focus:bg-white focus:ring-1 focus:ring-[#123B72]"
                       />
 
-                      <div className="flex flex-wrap items-start gap-3 border-t border-[#EFEAE4] pt-3">
+                      <div className="flex flex-wrap items-start gap-3 border-t border-[#E6ECF5] pt-3">
                         <div className="flex items-center gap-2">
                           <label className="text-xs font-semibold text-stone-500">Tahun</label>
                           <select
@@ -808,7 +808,7 @@ export default function Home() {
                             onChange={(e) =>
                               setDocFilterYear(e.target.value ? Number(e.target.value) : null)
                             }
-                            className="rounded-lg border border-[#DFD9D2] bg-[#FAF8F5] px-2.5 py-1 text-xs text-stone-800 outline-none focus:border-[#C13D0D]"
+                            className="rounded-lg border border-[#D9E1EC] bg-[#F6F9FD] px-2.5 py-1 text-xs text-stone-800 outline-none focus:border-[#123B72]"
                           >
                             <option value="">Semua tahun</option>
                             {availableYears.map((year) => (
@@ -825,7 +825,7 @@ export default function Home() {
                             {docFilterTopics.map((topic) => (
                               <span
                                 key={topic}
-                                className="flex items-center gap-1 rounded-full border border-[#F4D4C9] bg-[#FDF4F0] px-2.5 py-0.5 text-xs font-semibold text-[#A0320A]"
+                                className="flex items-center gap-1 rounded-full border border-[#C7D8EE] bg-[#EEF4FC] px-2.5 py-0.5 text-xs font-semibold text-[#0B254B]"
                               >
                                 {topic}
                                 <button
@@ -847,11 +847,11 @@ export default function Home() {
                                   ? "Cari tema, mis. beton, tsunami..."
                                   : "Tambah tema..."
                               }
-                              className="min-w-[140px] flex-1 rounded-lg border border-[#DFD9D2] bg-[#FAF8F5] px-2.5 py-1 text-xs text-stone-800 outline-none focus:border-[#C13D0D] focus:bg-white"
+                              className="min-w-[140px] flex-1 rounded-lg border border-[#D9E1EC] bg-[#F6F9FD] px-2.5 py-1 text-xs text-stone-800 outline-none focus:border-[#123B72] focus:bg-white"
                             />
                           </div>
                           {docTopicSuggestions.length > 0 && (
-                            <ul className="popover-panel absolute top-full z-10 mt-1 w-full max-w-xs rounded-xl border border-[#DFD9D2] bg-white shadow-md">
+                            <ul className="popover-panel absolute top-full z-10 mt-1 w-full max-w-xs rounded-xl border border-[#D9E1EC] bg-white shadow-md">
                               {docTopicSuggestions.map((topic) => (
                                 <li key={topic}>
                                   <button
@@ -859,7 +859,7 @@ export default function Home() {
                                       setDocFilterTopics((prev) => [...prev, topic]);
                                       setDocTopicInput("");
                                     }}
-                                    className="block w-full px-3 py-1.5 text-left text-xs text-stone-800 hover:bg-[#FDF4F0] hover:text-[#A0320A]"
+                                    className="block w-full px-3 py-1.5 text-left text-xs text-stone-800 hover:bg-[#EEF4FC] hover:text-[#0B254B]"
                                   >
                                     {topic}
                                   </button>
@@ -875,7 +875,7 @@ export default function Home() {
                               setDocFilterYear(null);
                               setDocFilterTopics([]);
                             }}
-                            className="shrink-0 text-xs font-semibold text-[#A0320A] hover:underline"
+                            className="shrink-0 text-xs font-semibold text-[#0B254B] hover:underline"
                           >
                             Reset filter
                           </button>
@@ -905,10 +905,10 @@ export default function Home() {
                         return (
                           <li
                             key={doc.id}
-                            className="fresh-card group flex items-center justify-between gap-4 rounded-2xl px-5 py-4 text-sm transition-all duration-150 hover:border-[#F4D4C9] hover:bg-[#FDF9F6]"
+                            className="fresh-card group flex items-center justify-between gap-4 rounded-2xl px-5 py-4 text-sm transition-all duration-150 hover:border-[#C7D8EE] hover:bg-[#F8FAFD]"
                           >
                             <div className="flex min-w-0 flex-col gap-1.5">
-                              <span className="truncate font-bold text-stone-900 transition-colors group-hover:text-[#A0320A]">
+                              <span className="truncate font-bold text-stone-900 transition-colors group-hover:text-[#0B254B]">
                                 {doc.title || doc.filename}
                               </span>
                               {authors.length > 0 && (
@@ -918,10 +918,10 @@ export default function Home() {
                                 </span>
                               )}
                               <span className="flex flex-wrap items-center gap-2 text-xs text-stone-500">
-                                <span className="rounded-full border border-[#F4D4C9] bg-[#FDF4F0] px-2.5 py-0.5 font-semibold text-[#A0320A]">
+                                <span className="rounded-full border border-[#C7D8EE] bg-[#EEF4FC] px-2.5 py-0.5 font-semibold text-[#0B254B]">
                                   {SOURCE_LABEL[doc.source] ?? "Manual"}
                                 </span>
-                                <span className="rounded-full border border-[#DFD9D2] bg-[#FAF8F5] px-2.5 py-0.5 font-medium text-stone-700">
+                                <span className="rounded-full border border-[#D9E1EC] bg-[#F6F9FD] px-2.5 py-0.5 font-medium text-stone-700">
                                   {METHOD_LABEL[doc.extraction_method]}
                                 </span>
                                 <span>{doc.page_count} halaman</span>
@@ -934,7 +934,7 @@ export default function Home() {
                             </div>
                             <Link
                               href={`/documents/${doc.id}`}
-                              className="shrink-0 rounded-lg border border-[#F4D4C9] bg-[#FDF4F0] px-3 py-1.5 text-xs font-bold text-[#A0320A] transition-colors hover:border-[#C13D0D] hover:bg-[#C13D0D] hover:text-white"
+                              className="shrink-0 rounded-lg border border-[#C7D8EE] bg-[#EEF4FC] px-3 py-1.5 text-xs font-bold text-[#0B254B] transition-colors hover:border-[#123B72] hover:bg-[#123B72] hover:text-white"
                             >
                               Detail &rarr;
                             </Link>
@@ -1199,8 +1199,8 @@ export default function Home() {
                           message.role === "assistant" &&
                           message.sources &&
                           message.sources.length > 0 && (
-                            <div className="flex max-w-[85%] flex-col gap-1.5 rounded-xl border border-[#E5E0D8] bg-white/95 p-3 shadow-xs">
-                              <span className="text-[11px] font-bold uppercase tracking-wider text-[#8C2806]">
+                            <div className="flex max-w-[85%] flex-col gap-1.5 rounded-xl border border-[#D9E1EC] bg-white/95 p-3 shadow-xs">
+                              <span className="text-[11px] font-bold uppercase tracking-wider text-[#0B254B]">
                                 Referensi Jurnal Terbit OJS ({message.sources.length})
                               </span>
                               <div className="flex flex-col gap-2">
@@ -1222,12 +1222,12 @@ export default function Home() {
                                   return (
                                     <div
                                       key={j}
-                                      className="rounded-lg border-l-2 border-[#C13D0D] bg-[#FAF8F4] px-2.5 py-2 text-xs text-zinc-700"
+                                      className="rounded-lg border-l-2 border-[#123B72] bg-[#F4F7FC] px-2.5 py-2 text-xs text-zinc-700"
                                     >
                                       <div className="flex items-start justify-between gap-2">
                                         <Link
                                           href={`/documents/${source.document_id}`}
-                                          className="font-semibold text-zinc-900 hover:text-[#C13D0D] hover:underline"
+                                          className="font-semibold text-zinc-900 hover:text-[#123B72] hover:underline"
                                         >
                                           [{j + 1}] {source.title || source.filename}
                                         </Link>
@@ -1236,7 +1236,7 @@ export default function Home() {
                                             href={source.article_url}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="shrink-0 font-semibold text-[#C13D0D] hover:underline"
+                                            className="shrink-0 font-semibold text-[#123B72] hover:underline"
                                           >
                                             OJS &#8599;
                                           </a>
@@ -1294,10 +1294,10 @@ export default function Home() {
           )}
           </main>
 
-          <footer className="mt-auto border-t border-[#DFD9D2] bg-white/80 backdrop-blur-xs">
+          <footer className="mt-auto border-t border-[#D9E1EC] bg-white/80 backdrop-blur-xs">
             <div className="mx-auto flex w-full max-w-[1480px] flex-col items-start justify-between gap-2 px-4 py-3 text-xs text-stone-500 sm:flex-row sm:items-center sm:px-6 lg:px-8">
               <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-[#C13D0D]" aria-hidden="true" />
+                <span className="h-2 w-2 rounded-full bg-[#123B72]" aria-hidden="true" />
                 <span>
                   <strong className="font-semibold text-stone-700">JP-Insight</strong> · Jurnal
                   Permukiman — Direktorat Bina Teknik Permukiman dan Perumahan, Kementerian PU
@@ -1308,7 +1308,7 @@ export default function Home() {
                   href="http://localhost/jurnalpermukiman/index.php/JP"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-medium text-[#A0320A] transition-colors hover:underline"
+                  className="font-medium text-[#0B254B] transition-colors hover:underline"
                 >
                   Portal OJS ↗
                 </a>
@@ -1316,7 +1316,7 @@ export default function Home() {
                   href="http://localhost:3000/dashboard"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-medium text-stone-600 transition-colors hover:text-[#A0320A]"
+                  className="font-medium text-stone-600 transition-colors hover:text-[#0B254B]"
                 >
                   MQC Assistant ↗
                 </a>
