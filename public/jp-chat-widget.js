@@ -22,37 +22,45 @@
   style.textContent = `
     .jp-widget-fab {
       position: fixed;
-      bottom: 24px;
+      bottom: 20px;
       right: 24px;
       z-index: 999999;
       background: linear-gradient(135deg, #C13D0D 0%, #8C2806 100%);
       color: #ffffff;
       border: 2px solid #F2C94C;
-      border-radius: 50px;
-      padding: 7px 16px 7px 8px;
+      border-radius: 18px;
+      padding: 8px 11px 7px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      font-size: 14px;
-      font-weight: 600;
-      box-shadow: 0 8px 24px rgba(140, 40, 6, 0.32);
+      box-shadow: 0 8px 24px rgba(140, 40, 6, 0.34);
       cursor: pointer;
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 9px;
+      justify-content: center;
+      gap: 4px;
       transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .jp-widget-fab:hover {
-      transform: translateY(-2px) scale(1.02);
-      box-shadow: 0 12px 30px rgba(140, 40, 6, 0.42);
+      transform: translateY(-2px) scale(1.03);
+      box-shadow: 0 12px 30px rgba(140, 40, 6, 0.44);
       background: linear-gradient(135deg, #D04917 0%, #A0320A 100%);
     }
     .jp-widget-fab-logo {
-      width: 32px;
-      height: 32px;
+      width: 44px;
+      height: 44px;
       border-radius: 9999px;
       object-fit: cover;
       background: #ffffff;
       display: block;
       flex-shrink: 0;
+    }
+    .jp-widget-fab-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.25px;
+      line-height: 1.1;
+      color: #ffffff;
+      white-space: nowrap;
     }
     .jp-widget-header-logo {
       width: 26px;
@@ -65,11 +73,11 @@
     }
     .jp-widget-window {
       position: fixed;
-      bottom: 84px;
+      bottom: 108px;
       right: 24px;
       width: 380px;
       height: 540px;
-      max-height: calc(100vh - 110px);
+      max-height: calc(100vh - 132px);
       max-width: calc(100vw - 32px);
       z-index: 999999;
       background: #ffffff;
@@ -252,10 +260,10 @@
   // Buat Elemen Floating Button
   const fab = document.createElement("button");
   fab.className = "jp-widget-fab";
-  fab.setAttribute("aria-label", "Tanya Jurnal Permukiman");
+  fab.setAttribute("aria-label", "JP Insight — Tanya Jurnal Permukiman");
   fab.innerHTML = `
-    <img class="jp-widget-fab-logo" src="${LOGO_URL}" alt="Logo JP-Insight" />
-    <span>Tanya JP</span>
+    <img class="jp-widget-fab-logo" src="${LOGO_URL}" alt="Logo JP Insight" />
+    <span class="jp-widget-fab-label">JP Insight</span>
   `;
   document.body.appendChild(fab);
 
