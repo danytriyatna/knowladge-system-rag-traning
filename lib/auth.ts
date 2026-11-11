@@ -97,7 +97,7 @@ export async function createUser(input: {
     unit: input.unit ?? null,
     created_at: new Date().toISOString(),
   };
-  if (process.env.DEV_MODE === "true") return;
+  if (process.env.DEV_MODE === "true") return record;
   await sql`
     INSERT INTO users (id, email, password_hash, full_name, role, unit, created_at)
     VALUES (${record.id}, ${record.email}, ${record.password_hash}, ${record.full_name}, ${record.role}, ${record.unit}, ${record.created_at})
