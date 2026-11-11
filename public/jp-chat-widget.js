@@ -11,6 +11,11 @@
     (currentScript && currentScript.getAttribute("data-endpoint")) ||
     (window.location.port === "3001" ? "/api/widget/chat" : "http://localhost:3001/api/widget/chat");
 
+  const SCRIPT_SRC = currentScript && currentScript.src ? currentScript.src : "";
+  const LOGO_URL = SCRIPT_SRC
+    ? new URL("jp-insight-logo.png", SCRIPT_SRC).href
+    : "/jp-insight-logo.png";
+
   // Injeksi CSS Khusus (Scattered & Scoped agar tidak tabrakan dengan CSS OJS / Bootstrap / Tailwind)
   const style = document.createElement("style");
   style.id = "jp-widget-styles";
@@ -24,7 +29,7 @@
       color: #ffffff;
       border: 2px solid #F2C94C;
       border-radius: 50px;
-      padding: 12px 20px;
+      padding: 7px 16px 7px 8px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       font-size: 14px;
       font-weight: 600;
@@ -32,7 +37,7 @@
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 9px;
       transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
     .jp-widget-fab:hover {
@@ -40,11 +45,23 @@
       box-shadow: 0 12px 30px rgba(140, 40, 6, 0.42);
       background: linear-gradient(135deg, #D04917 0%, #A0320A 100%);
     }
-    .jp-widget-fab svg {
-      width: 20px;
-      height: 20px;
-      fill: none;
-      stroke: currentColor;
+    .jp-widget-fab-logo {
+      width: 32px;
+      height: 32px;
+      border-radius: 9999px;
+      object-fit: cover;
+      background: #ffffff;
+      display: block;
+      flex-shrink: 0;
+    }
+    .jp-widget-header-logo {
+      width: 26px;
+      height: 26px;
+      border-radius: 9999px;
+      object-fit: cover;
+      background: #ffffff;
+      display: block;
+      flex-shrink: 0;
     }
     .jp-widget-window {
       position: fixed;
@@ -237,9 +254,7 @@
   fab.className = "jp-widget-fab";
   fab.setAttribute("aria-label", "Tanya Jurnal Permukiman");
   fab.innerHTML = `
-    <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-    </svg>
+    <img class="jp-widget-fab-logo" src="${LOGO_URL}" alt="Logo JP-Insight" />
     <span>Tanya JP</span>
   `;
   document.body.appendChild(fab);
@@ -249,11 +264,14 @@
   win.className = "jp-widget-window";
   win.innerHTML = `
     <div class="jp-widget-header">
-      <div>
-        <div class="jp-widget-header-title">
-          <span>🏛️ JP-Insight</span>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <img class="jp-widget-header-logo" src="${LOGO_URL}" alt="JP-Insight" />
+        <div>
+          <div class="jp-widget-header-title">
+            <span>JP-Insight</span>
+          </div>
+          <div class="jp-widget-header-sub">Asisten Cerdas Jurnal Permukiman KemenPU</div>
         </div>
-        <div class="jp-widget-header-sub">Asisten Cerdas Jurnal Permukiman KemenPU</div>
       </div>
       <button class="jp-widget-close" aria-label="Tutup">&times;</button>
     </div>
