@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -527,332 +528,416 @@ export default function Home() {
   const activeNavLabel = visibleNavItems.find((n) => n.tab === pageTab)?.label ?? "";
 
   return (
-    <div className="flex min-h-screen w-full bg-background text-foreground">
-      {/* Desktop sidebar */}
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-surface md:flex">
-        <div className="border-b border-border px-5 py-5">
-          <div className="text-sm font-semibold tracking-tight">JP-Insight</div>
-          <div className="text-xs text-muted">Jurnal Permukiman</div>
-        </div>
-        <nav className="flex flex-1 flex-col gap-0.5 p-3">
-          {visibleNavItems.map((item) => (
-            <button
-              key={item.tab}
-              onClick={() => setPageTab(item.tab)}
-              className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors ${
-                pageTab === item.tab
-                  ? "bg-accent-soft text-accent-text"
-                  : "text-muted hover:bg-background hover:text-foreground"
-              }`}
-            >
-              {item.icon}
-              {item.label}
-            </button>
-          ))}
-        </nav>
-      </aside>
+    <div className="flex min-h-screen w-full flex-col puskim-canvas text-foreground">
+      {/* Unified Puskim Merah Bata Top Header (Logo PU kiri + KEMENPU pill kanan) */}
+      <header className="sticky top-0 z-20 border-b border-[#8C2806]/60 bg-gradient-to-r from-[#B93A0C] via-[#C13D0D] to-[#962D08] shadow-sm">
+        <div className="flex w-full items-center justify-between gap-4 px-4 py-2.5 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-xs">
+              <Image
+                src="/logo-pu.png"
+                alt="Logo PU"
+                width={28}
+                height={28}
+                className="rounded-sm object-contain"
+                priority
+              />
+            </div>
+            <div className="leading-tight">
+              <p className="text-base font-extrabold tracking-tight text-white uppercase">
+                JP-Insight
+              </p>
+              <p className="text-[11px] font-medium tracking-wide text-white/85">
+                Jurnal Permukiman
+              </p>
+            </div>
+          </div>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        {/* Mobile nav */}
-        <div className="flex items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3 md:hidden">
-          <span className="text-sm font-semibold">JP-Insight</span>
-          <div className="flex items-center gap-2">
-            <select
-              value={pageTab}
-              onChange={(e) => setPageTab(e.target.value as PageTab)}
-              className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm"
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <a
+              href="http://localhost/jurnalpermukiman/index.php/JP"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden items-center gap-1.5 rounded-lg border border-white/25 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:bg-white/20 md:inline-flex"
             >
-              {visibleNavItems.map((item) => (
-                <option key={item.tab} value={item.tab}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={handleLogout}
-              className="rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:border-red-200 hover:text-red-600 dark:hover:border-red-900 dark:hover:text-red-400"
+              Portal OJS ↗
+            </a>
+            <a
+              href="http://localhost:3000/dashboard"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden items-center gap-1.5 rounded-lg border border-white/25 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:bg-white/20 md:inline-flex"
             >
-              Keluar
-            </button>
+              MQC Assistant ↗
+            </a>
+            <div className="hidden h-9 items-center rounded-full bg-white px-3 py-1 shadow-sm ring-1 ring-black/10 sm:flex">
+              <Image
+                src="/kemenpu_pill_clean.png"
+                alt="Kementerian Pekerjaan Umum"
+                width={136}
+                height={32}
+                className="h-7 w-auto object-contain"
+                priority
+              />
+            </div>
+            {currentUser && <AccountMenu user={currentUser} onLogout={handleLogout} />}
           </div>
         </div>
+      </header>
 
-        {/* Desktop top bar */}
-        {currentUser && (
-          <div className="hidden items-center justify-end border-b border-border bg-surface px-8 py-3 md:flex">
-            <AccountMenu user={currentUser} onLogout={handleLogout} />
-          </div>
-        )}
-
-        <main className="flex min-w-0 flex-1 flex-col gap-6 px-4 py-6 md:px-8 md:py-8">
-          <h1 className="text-lg font-semibold tracking-tight md:hidden">{activeNavLabel}</h1>
-
-          {pageTab === "regulations" && (
-            <div className="mx-auto w-full max-w-4xl">
-              <RegulationsPanel isAdmin={Boolean(isAdmin)} />
-            </div>
-          )}
-          {pageTab === "gaps" && (
-            <div className="mx-auto w-full max-w-4xl">
-              <GapPanel isAdmin={Boolean(isAdmin)} />
-            </div>
-          )}
-          {pageTab === "skills" && isAdmin && (
-            <div className="mx-auto w-full max-w-3xl">
-              <SkillsPanel />
-            </div>
-          )}
-          {pageTab === "sync" && isAdmin && (
-            <div className="mx-auto w-full max-w-3xl">
-              <SyncPanel onSynced={loadDocuments} />
-            </div>
-          )}
-          {pageTab === "admin" && isAdmin && (
-            <div className="mx-auto w-full max-w-4xl">
-              <AdminPanel />
-            </div>
-          )}
-
-          {pageTab === "documents" && (
-            <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
-              <div>
-                <h1 className="hidden text-xl font-semibold tracking-tight md:block">
-                  Dokumen
-                </h1>
-                <p className="mt-1 text-sm text-muted">
-                  {isAdmin
-                    ? "Upload PDF manual, atau lihat naskah yang sudah masuk lewat sinkronisasi OJS."
-                    : "Naskah yang sudah masuk ke basis pengetahuan Jurnal Permukiman."}
-                </p>
-              </div>
-
-              {isAdmin && (
-              <form
-                onSubmit={handleUpload}
-                className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-4"
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="application/pdf"
-                  className="text-sm text-foreground file:mr-3 file:rounded-full file:border-0 file:bg-accent-soft file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-accent-text"
-                />
-
-                <div className="flex flex-col gap-2">
-                  <span className="text-xs font-medium text-muted">Mode pembacaan</span>
-                  <div className="flex gap-4 text-sm">
-                    <label className="flex items-center gap-2 text-foreground">
-                      <input
-                        type="radio"
-                        name="mode"
-                        value="local"
-                        checked={mode === "local"}
-                        onChange={() => setMode("local")}
-                      />
-                      Lokal (teks asli PDF)
-                    </label>
-                    <label className="flex items-center gap-2 text-foreground">
-                      <input
-                        type="radio"
-                        name="mode"
-                        value="gemini"
-                        checked={mode === "gemini"}
-                        onChange={() => setMode("gemini")}
-                      />
-                      Gemini (PDF scan/gambar)
-                    </label>
-                  </div>
-                  {mode === "gemini" && (
-                    <p className="text-xs text-muted">
-                      Setiap halaman diproses sebagai gambar oleh AI, jadi bisa memakan
-                      waktu 1-3 menit (atau lebih) untuk dokumen banyak halaman. Mode
-                      Lokal jauh lebih cepat kalau PDF-nya sudah berisi teks asli (bukan
-                      hasil scan).
-                    </p>
-                  )}
-                </div>
-
+      <div className="flex min-w-0 flex-1">
+        {/* Desktop sidebar (Merah Bata Puskim gradient matching OJS Backend) */}
+        <aside className="hidden w-60 shrink-0 flex-col justify-between border-r border-[#752004] bg-gradient-to-b from-[#B93A0C] to-[#8C2806] p-3.5 text-white shadow-lg md:flex">
+          <nav className="flex flex-col gap-1">
+            <p className="px-3 pb-1.5 pt-1 text-[10.5px] font-extrabold uppercase tracking-wider text-white/60">
+              Menu Utama
+            </p>
+            {visibleNavItems.map((item) => {
+              const isActive = pageTab === item.tab;
+              return (
                 <button
-                  type="submit"
-                  disabled={loading}
-                  className="press w-fit rounded-full bg-accent px-5 py-2 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+                  key={item.tab}
+                  onClick={() => setPageTab(item.tab)}
+                  className={`flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-left text-sm transition-all duration-150 ${
+                    isActive
+                      ? "bg-white font-bold text-[#C13D0D] shadow-md"
+                      : "font-medium text-white/90 hover:translate-x-0.5 hover:bg-black/20 hover:text-white"
+                  }`}
                 >
-                  {loading ? `Memproses... (${elapsedSeconds}s)` : "Upload"}
+                  {item.icon}
+                  {item.label}
                 </button>
-                {loading && mode === "gemini" && (
-                  <p className="text-xs text-muted">
-                    Sedang membaca dengan Gemini, mohon tunggu, jangan tutup halaman
-                    ini...
-                  </p>
-                )}
-                {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-              </form>
-              )}
+              );
+            })}
+          </nav>
 
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h2 className="text-sm font-medium text-muted">
-                    {filteredDocuments.length} dari {documents.length} dokumen
-                  </h2>
-                  <div className="flex gap-1 rounded-full border border-border bg-surface p-0.5">
-                    {(["all", "ojs_harvest", "manual_upload"] as const).map((f) => (
-                      <button
-                        key={f}
-                        onClick={() => setDocSourceFilter(f)}
-                        className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                          docSourceFilter === f
-                            ? "bg-accent text-accent-foreground"
-                            : "text-muted hover:text-foreground"
-                        }`}
-                      >
-                        {f === "all" ? "Semua" : SOURCE_LABEL[f]}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <input
-                  value={docSearch}
-                  onChange={(e) => setDocSearch(e.target.value)}
-                  placeholder="Cari judul, penulis, nama file, atau DOI..."
-                  className="rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-accent"
-                />
+          <div className="mt-6 border-t border-white/15 pt-3 pb-10 text-xs text-white/75">
+            <p className="px-2 font-semibold text-white/90">Basis Pengetahuan</p>
+            <p className="mt-0.5 px-2 text-[11px] text-white/70">
+              {documents.length} naskah terindeks
+            </p>
+          </div>
+        </aside>
 
-                <div className="flex flex-wrap items-start gap-3 rounded-xl border border-border bg-surface p-3">
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs font-medium text-muted">Tahun</label>
-                    <select
-                      value={docFilterYear ?? ""}
-                      onChange={(e) =>
-                        setDocFilterYear(e.target.value ? Number(e.target.value) : null)
-                      }
-                      className="rounded-lg border border-border bg-background px-2 py-1 text-xs outline-none focus:border-accent"
-                    >
-                      <option value="">Semua tahun</option>
-                      {availableYears.map((year) => (
-                        <option key={year} value={year}>
-                          {year}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="relative flex min-w-0 flex-1 flex-col gap-1.5">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <label className="text-xs font-medium text-muted">Tema</label>
-                      {docFilterTopics.map((topic) => (
-                        <span
-                          key={topic}
-                          className="flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs text-accent-text"
-                        >
-                          {topic}
-                          <button
-                            onClick={() =>
-                              setDocFilterTopics((prev) => prev.filter((t) => t !== topic))
-                            }
-                            aria-label={`Hapus filter ${topic}`}
-                            className="hover:opacity-70"
-                          >
-                            &#10005;
-                          </button>
-                        </span>
-                      ))}
-                      <input
-                        value={docTopicInput}
-                        onChange={(e) => setDocTopicInput(e.target.value)}
-                        placeholder={
-                          docFilterTopics.length === 0
-                            ? "Cari tema, mis. beton, tsunami..."
-                            : "Tambah tema..."
-                        }
-                        className="min-w-[140px] flex-1 rounded-lg border border-border bg-background px-2 py-1 text-xs outline-none focus:border-accent"
-                      />
-                    </div>
-                    {docTopicSuggestions.length > 0 && (
-                      <ul className="popover-panel absolute top-full z-10 mt-1 w-full max-w-xs rounded-lg border border-border bg-surface shadow-md">
-                        {docTopicSuggestions.map((topic) => (
-                          <li key={topic}>
-                            <button
-                              onClick={() => {
-                                setDocFilterTopics((prev) => [...prev, topic]);
-                                setDocTopicInput("");
-                              }}
-                              className="block w-full px-3 py-1.5 text-left text-xs text-foreground hover:bg-accent-soft hover:text-accent-text"
-                            >
-                              {topic}
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-
-                  {(docFilterYear || docFilterTopics.length > 0) && (
-                    <button
-                      onClick={() => {
-                        setDocFilterYear(null);
-                        setDocFilterTopics([]);
-                      }}
-                      className="shrink-0 text-xs font-medium text-muted hover:text-foreground"
-                    >
-                      Reset filter
-                    </button>
-                  )}
-                </div>
-
-                {documents.length === 0 && (
-                  <p className="text-sm text-muted">Belum ada dokumen diupload.</p>
-                )}
-                {documents.length > 0 && filteredDocuments.length === 0 && (
-                  <p className="text-sm text-muted">Tidak ada dokumen yang cocok dengan pencarian.</p>
-                )}
-                <ul className="flex flex-col gap-2">
-                  {filteredDocuments.map((doc) => {
-                    const authors: string[] = (() => {
-                      try {
-                        return JSON.parse(doc.authors || "[]");
-                      } catch {
-                        return [];
-                      }
-                    })();
-                    return (
-                      <li
-                        key={doc.id}
-                        className="flex items-center justify-between gap-4 rounded-xl border border-border bg-surface px-4 py-3 text-sm"
-                      >
-                        <div className="flex min-w-0 flex-col gap-1">
-                          <span className="truncate font-medium text-foreground">
-                            {doc.title || doc.filename}
-                          </span>
-                          {authors.length > 0 && (
-                            <span className="truncate text-xs text-muted">
-                              {authors.join(", ")}
-                              {doc.published_year ? ` · ${doc.published_year}` : ""}
-                            </span>
-                          )}
-                          <span className="flex flex-wrap items-center gap-2 text-xs text-muted">
-                            <span className="rounded-full border border-border px-2 py-0.5">
-                              {SOURCE_LABEL[doc.source] ?? "Manual"}
-                            </span>
-                            <span className="rounded-full border border-border px-2 py-0.5">
-                              {METHOD_LABEL[doc.extraction_method]}
-                            </span>
-                            {doc.page_count} halaman
-                            {doc.doi && <span className="font-mono">DOI: {doc.doi}</span>}
-                          </span>
-                        </div>
-                        <Link
-                          href={`/documents/${doc.id}`}
-                          className="shrink-0 text-sm font-medium text-accent-text hover:underline"
-                        >
-                          Detail &rarr;
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
+        <div className="flex min-w-0 flex-1 flex-col">
+          {/* Mobile nav */}
+          <div className="flex items-center justify-between gap-3 border-b border-border bg-white px-4 py-3 md:hidden">
+            <span className="text-sm font-bold text-stone-900">{activeNavLabel}</span>
+            <div className="flex items-center gap-2">
+              <select
+                value={pageTab}
+                onChange={(e) => setPageTab(e.target.value as PageTab)}
+                className="rounded-lg border border-border bg-background px-3 py-1.5 text-sm"
+              >
+                {visibleNavItems.map((item) => (
+                  <option key={item.tab} value={item.tab}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
             </div>
-          )}
+          </div>
+
+          <main className="mx-auto flex w-full max-w-[1480px] min-w-0 flex-1 flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+            <h1 className="text-lg font-bold tracking-tight md:hidden">{activeNavLabel}</h1>
+
+            {pageTab === "regulations" && (
+              <div className="w-full">
+                <RegulationsPanel isAdmin={Boolean(isAdmin)} />
+              </div>
+            )}
+            {pageTab === "gaps" && (
+              <div className="w-full">
+                <GapPanel isAdmin={Boolean(isAdmin)} />
+              </div>
+            )}
+            {pageTab === "skills" && isAdmin && (
+              <div className="mx-auto w-full max-w-5xl">
+                <SkillsPanel />
+              </div>
+            )}
+            {pageTab === "sync" && isAdmin && (
+              <div className="mx-auto w-full max-w-5xl">
+                <SyncPanel onSynced={loadDocuments} />
+              </div>
+            )}
+            {pageTab === "admin" && isAdmin && (
+              <div className="w-full">
+                <AdminPanel />
+              </div>
+            )}
+
+            {pageTab === "documents" && (
+              <div className="flex w-full flex-col gap-5">
+                <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                  <div className="flex items-start gap-3">
+                    <span
+                      className="mt-1 h-7 w-1.5 shrink-0 rounded-full bg-gradient-to-b from-[#D14715] to-[#8C2806]"
+                      aria-hidden="true"
+                    />
+                    <div>
+                      <h1 className="hidden text-xl font-bold tracking-tight text-stone-900 md:block">
+                        Dokumen Basis Pengetahuan
+                      </h1>
+                      <p className="mt-0.5 text-sm text-stone-600">
+                        {isAdmin
+                          ? "Upload PDF manual, atau telusuri naskah yang sudah masuk lewat sinkronisasi OJS."
+                          : "Naskah yang sudah masuk ke basis pengetahuan Jurnal Permukiman."}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="inline-flex items-center gap-2 self-start rounded-full border border-[#F4D4C9] bg-[#FDF4F0] px-3.5 py-1.5 text-xs font-semibold text-[#A0320A] shadow-xs sm:self-auto">
+                    <span className="h-2 w-2 rounded-full bg-[#C13D0D]" aria-hidden="true" />
+                    {documents.length} Dokumen Terindeks
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 gap-5 xl:grid-cols-12 xl:items-start">
+                  {isAdmin && (
+                    <form
+                      onSubmit={handleUpload}
+                      className="fresh-card flex flex-col gap-4 rounded-2xl border-t-[3px] border-t-[#C13D0D] p-5 xl:col-span-4"
+                    >
+                      <div>
+                        <h2 className="text-sm font-bold text-stone-900">Upload PDF Manual</h2>
+                        <p className="mt-0.5 text-xs text-stone-500">
+                          Tambahkan dokumen PDF baru ke sistem RAG JP-Insight.
+                        </p>
+                      </div>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="application/pdf"
+                        className="rounded-xl border border-dashed border-[#DFD9D2] bg-[#FAF8F5] p-3 text-sm text-stone-800 file:mr-3 file:rounded-lg file:border file:border-[#F4D4C9] file:bg-[#FDF4F0] file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-[#A0320A] hover:file:bg-[#C13D0D] hover:file:text-white"
+                      />
+
+                      <div className="flex flex-col gap-2">
+                        <span className="text-xs font-semibold text-stone-600">Mode pembacaan</span>
+                        <div className="flex flex-col gap-2 text-sm">
+                          <label className="flex cursor-pointer items-center gap-2 text-stone-800">
+                            <input
+                              type="radio"
+                              name="mode"
+                              value="local"
+                              checked={mode === "local"}
+                              onChange={() => setMode("local")}
+                              className="accent-[#C13D0D]"
+                            />
+                            Lokal (teks asli PDF)
+                          </label>
+                          <label className="flex cursor-pointer items-center gap-2 text-stone-800">
+                            <input
+                              type="radio"
+                              name="mode"
+                              value="gemini"
+                              checked={mode === "gemini"}
+                              onChange={() => setMode("gemini")}
+                              className="accent-[#C13D0D]"
+                            />
+                            Gemini (PDF scan/gambar)
+                          </label>
+                        </div>
+                        {mode === "gemini" && (
+                          <p className="text-xs text-stone-500">
+                            Setiap halaman diproses sebagai gambar oleh AI, jadi bisa memakan
+                            waktu 1-3 menit (atau lebih) untuk dokumen banyak halaman. Mode
+                            Lokal jauh lebih cepat kalau PDF-nya sudah berisi teks asli.
+                          </p>
+                        )}
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={loading}
+                        className="press w-full rounded-xl bg-gradient-to-r from-[#D14715] to-[#A0320A] px-5 py-2.5 text-sm font-bold text-white shadow-xs transition-all hover:brightness-105 disabled:opacity-50"
+                      >
+                        {loading ? `Memproses... (${elapsedSeconds}s)` : "Upload Dokumen"}
+                      </button>
+                      {loading && mode === "gemini" && (
+                        <p className="text-xs text-stone-500">
+                          Sedang membaca dengan Gemini, mohon tunggu, jangan tutup halaman
+                          ini...
+                        </p>
+                      )}
+                      {error && <p className="text-sm text-rose-600">{error}</p>}
+                    </form>
+                  )}
+
+                  <div className={`flex flex-col gap-3.5 ${isAdmin ? "xl:col-span-8" : "xl:col-span-12"}`}>
+                    <div className="fresh-card flex flex-col gap-3 rounded-2xl p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <h2 className="text-xs font-bold uppercase tracking-wide text-stone-500">
+                          Menampilkan {filteredDocuments.length} dari {documents.length} dokumen
+                        </h2>
+                        <div className="flex gap-1 rounded-full border border-[#DFD9D2] bg-[#FAF8F5] p-0.5">
+                          {(["all", "ojs_harvest", "manual_upload"] as const).map((f) => (
+                            <button
+                              key={f}
+                              onClick={() => setDocSourceFilter(f)}
+                              className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                                docSourceFilter === f
+                                  ? "bg-gradient-to-r from-[#D14715] to-[#A0320A] text-white shadow-xs"
+                                  : "text-stone-600 hover:text-[#A0320A]"
+                              }`}
+                            >
+                              {f === "all" ? "Semua" : SOURCE_LABEL[f]}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <input
+                        value={docSearch}
+                        onChange={(e) => setDocSearch(e.target.value)}
+                        placeholder="Cari judul, penulis, nama file, atau DOI..."
+                        className="rounded-xl border border-[#DFD9D2] bg-[#FAF8F5] px-3.5 py-2 text-sm text-stone-900 outline-none transition-colors focus:border-[#C13D0D] focus:bg-white focus:ring-1 focus:ring-[#C13D0D]"
+                      />
+
+                      <div className="flex flex-wrap items-start gap-3 border-t border-[#EFEAE4] pt-3">
+                        <div className="flex items-center gap-2">
+                          <label className="text-xs font-semibold text-stone-500">Tahun</label>
+                          <select
+                            value={filterYear ?? ""}
+                            onChange={(e) =>
+                              setDocFilterYear(e.target.value ? Number(e.target.value) : null)
+                            }
+                            className="rounded-lg border border-[#DFD9D2] bg-[#FAF8F5] px-2.5 py-1 text-xs text-stone-800 outline-none focus:border-[#C13D0D]"
+                          >
+                            <option value="">Semua tahun</option>
+                            {availableYears.map((year) => (
+                              <option key={year} value={year}>
+                                {year}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="relative flex min-w-0 flex-1 flex-col gap-1.5">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <label className="text-xs font-semibold text-stone-500">Tema</label>
+                            {docFilterTopics.map((topic) => (
+                              <span
+                                key={topic}
+                                className="flex items-center gap-1 rounded-full border border-[#F4D4C9] bg-[#FDF4F0] px-2.5 py-0.5 text-xs font-semibold text-[#A0320A]"
+                              >
+                                {topic}
+                                <button
+                                  onClick={() =>
+                                    setDocFilterTopics((prev) => prev.filter((t) => t !== topic))
+                                  }
+                                  aria-label={`Hapus filter ${topic}`}
+                                  className="hover:opacity-70"
+                                >
+                                  &#10005;
+                                </button>
+                              </span>
+                            ))}
+                            <input
+                              value={docTopicInput}
+                              onChange={(e) => setDocTopicInput(e.target.value)}
+                              placeholder={
+                                docFilterTopics.length === 0
+                                  ? "Cari tema, mis. beton, tsunami..."
+                                  : "Tambah tema..."
+                              }
+                              className="min-w-[140px] flex-1 rounded-lg border border-[#DFD9D2] bg-[#FAF8F5] px-2.5 py-1 text-xs text-stone-800 outline-none focus:border-[#C13D0D] focus:bg-white"
+                            />
+                          </div>
+                          {docTopicSuggestions.length > 0 && (
+                            <ul className="popover-panel absolute top-full z-10 mt-1 w-full max-w-xs rounded-xl border border-[#DFD9D2] bg-white shadow-md">
+                              {docTopicSuggestions.map((topic) => (
+                                <li key={topic}>
+                                  <button
+                                    onClick={() => {
+                                      setDocFilterTopics((prev) => [...prev, topic]);
+                                      setDocTopicInput("");
+                                    }}
+                                    className="block w-full px-3 py-1.5 text-left text-xs text-stone-800 hover:bg-[#FDF4F0] hover:text-[#A0320A]"
+                                  >
+                                    {topic}
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+
+                        {(docFilterYear || docFilterTopics.length > 0) && (
+                          <button
+                            onClick={() => {
+                              setDocFilterYear(null);
+                              setDocFilterTopics([]);
+                            }}
+                            className="shrink-0 text-xs font-semibold text-[#A0320A] hover:underline"
+                          >
+                            Reset filter
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {documents.length === 0 && (
+                      <div className="fresh-card rounded-2xl p-8 text-center text-sm text-stone-500">
+                        Belum ada dokumen diupload.
+                      </div>
+                    )}
+                    {documents.length > 0 && filteredDocuments.length === 0 && (
+                      <div className="fresh-card rounded-2xl p-8 text-center text-sm text-stone-500">
+                        Tidak ada dokumen yang cocok dengan pencarian.
+                      </div>
+                    )}
+                    <ul className="flex flex-col gap-3">
+                      {filteredDocuments.map((doc) => {
+                        const authors: string[] = (() => {
+                          try {
+                            return JSON.parse(doc.authors || "[]");
+                          } catch {
+                            return [];
+                          }
+                        })();
+                        return (
+                          <li
+                            key={doc.id}
+                            className="fresh-card group flex items-center justify-between gap-4 rounded-2xl px-5 py-4 text-sm transition-all duration-150 hover:border-[#F4D4C9] hover:bg-[#FDF9F6]"
+                          >
+                            <div className="flex min-w-0 flex-col gap-1.5">
+                              <span className="truncate font-bold text-stone-900 transition-colors group-hover:text-[#A0320A]">
+                                {doc.title || doc.filename}
+                              </span>
+                              {authors.length > 0 && (
+                                <span className="truncate text-xs text-stone-600">
+                                  {authors.join(", ")}
+                                  {doc.published_year ? ` · ${doc.published_year}` : ""}
+                                </span>
+                              )}
+                              <span className="flex flex-wrap items-center gap-2 text-xs text-stone-500">
+                                <span className="rounded-full border border-[#F4D4C9] bg-[#FDF4F0] px-2.5 py-0.5 font-semibold text-[#A0320A]">
+                                  {SOURCE_LABEL[doc.source] ?? "Manual"}
+                                </span>
+                                <span className="rounded-full border border-[#DFD9D2] bg-[#FAF8F5] px-2.5 py-0.5 font-medium text-stone-700">
+                                  {METHOD_LABEL[doc.extraction_method]}
+                                </span>
+                                <span>{doc.page_count} halaman</span>
+                                {doc.doi && (
+                                  <span className="font-mono text-[11px] text-stone-600">
+                                    DOI: {doc.doi}
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                            <Link
+                              href={`/documents/${doc.id}`}
+                              className="shrink-0 rounded-lg border border-[#F4D4C9] bg-[#FDF4F0] px-3 py-1.5 text-xs font-bold text-[#A0320A] transition-colors hover:border-[#C13D0D] hover:bg-[#C13D0D] hover:text-white"
+                            >
+                              Detail &rarr;
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
 
           {pageTab === "chat" && (
             <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 md:flex-row">
@@ -1135,7 +1220,38 @@ export default function Home() {
               </div>
             </div>
           )}
-        </main>
+          </main>
+
+          <footer className="mt-auto border-t border-[#DFD9D2] bg-white/80 backdrop-blur-xs">
+            <div className="mx-auto flex w-full max-w-[1480px] flex-col items-start justify-between gap-2 px-4 py-3 text-xs text-stone-500 sm:flex-row sm:items-center sm:px-6 lg:px-8">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-[#C13D0D]" aria-hidden="true" />
+                <span>
+                  <strong className="font-semibold text-stone-700">JP-Insight</strong> · Jurnal
+                  Permukiman — Direktorat Bina Teknik Permukiman dan Perumahan, Kementerian PU
+                </span>
+              </div>
+              <div className="flex items-center gap-4">
+                <a
+                  href="http://localhost/jurnalpermukiman/index.php/JP"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-[#A0320A] transition-colors hover:underline"
+                >
+                  Portal OJS ↗
+                </a>
+                <a
+                  href="http://localhost:3000/dashboard"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-stone-600 transition-colors hover:text-[#A0320A]"
+                >
+                  MQC Assistant ↗
+                </a>
+              </div>
+            </div>
+          </footer>
+        </div>
       </div>
 
       {pageTab !== "chat" && <ChatWidget onOpen={() => setPageTab("chat")} />}

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -221,37 +222,85 @@ export default function DocumentPage() {
   })();
 
   return (
-    <div className="flex min-h-screen flex-col items-center bg-background text-foreground">
-      <main className="flex w-full max-w-4xl flex-1 flex-col gap-6 px-6 py-10">
-        <Link href="/" className="text-sm text-muted hover:underline">
-          &larr; Kembali
-        </Link>
+    <div className="flex min-h-screen flex-col puskim-canvas text-foreground">
+      <header className="sticky top-0 z-20 border-b border-[#8C2806]/60 bg-gradient-to-r from-[#B93A0C] via-[#C13D0D] to-[#962D08] shadow-sm">
+        <div className="mx-auto flex w-full max-w-[1520px] items-center justify-between gap-4 px-4 py-2.5 sm:px-6 lg:px-8">
+          <Link href="/" className="flex items-center gap-3 rounded-lg transition-opacity hover:opacity-90">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-xs">
+              <Image src="/logo-pu.png" alt="Logo PU" width={28} height={28} className="rounded-sm object-contain" />
+            </div>
+            <div className="leading-tight">
+              <p className="text-base font-extrabold tracking-tight text-white uppercase">JP-Insight</p>
+              <p className="text-[11px] font-medium tracking-wide text-white/85">Jurnal Permukiman</p>
+            </div>
+          </Link>
 
-        {error && <p className="fade-in text-sm text-red-600 dark:text-red-400">{error}</p>}
+          <div className="flex items-center gap-3">
+            <a
+              href="http://localhost/jurnalpermukiman/index.php/JP"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden items-center gap-1.5 rounded-lg border border-white/25 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/20 md:inline-flex"
+            >
+              Portal OJS ↗
+            </a>
+            <a
+              href="http://localhost:3000/dashboard"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden items-center gap-1.5 rounded-lg border border-white/25 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/20 md:inline-flex"
+            >
+              MQC Assistant ↗
+            </a>
+            <div className="hidden h-9 items-center rounded-full bg-white px-3 py-1 shadow-sm ring-1 ring-black/10 sm:flex">
+              <Image
+                src="/kemenpu_pill_clean.png"
+                alt="Kementerian Pekerjaan Umum"
+                width={136}
+                height={32}
+                className="h-7 w-auto object-contain"
+              />
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-5 px-4 py-6 sm:px-6 lg:px-8">
+        <div>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[#DFD9D2] bg-white px-3 py-1.5 text-xs font-semibold text-[#A0320A] shadow-xs transition-colors hover:border-[#F4D4C9] hover:bg-[#FDF4F0]"
+          >
+            &larr; Kembali ke Basis Pengetahuan
+          </Link>
+        </div>
+
+        {error && <p className="fade-in text-sm text-rose-600">{error}</p>}
 
         {document && (
           <>
-            <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="fresh-card flex flex-wrap items-start justify-between gap-4 rounded-2xl border-t-[3px] border-t-[#C13D0D] p-5">
               <div className="min-w-0">
-                <h1 className="text-xl font-semibold tracking-tight">
+                <h1 className="text-xl font-bold tracking-tight text-stone-900">
                   {document.title || document.filename}
                 </h1>
                 {authors.length > 0 && (
-                  <p className="mt-0.5 text-sm text-muted">
+                  <p className="mt-1 text-sm text-stone-600">
                     {authors.join(", ")}
                     {document.published_year ? ` · ${document.published_year}` : ""}
                   </p>
                 )}
-                <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
-                  <span className="rounded-full border border-border px-2 py-0.5 text-xs">
+                <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-stone-500">
+                  <span className="rounded-full border border-[#F4D4C9] bg-[#FDF4F0] px-2.5 py-0.5 font-semibold text-[#A0320A]">
                     {SOURCE_LABEL[document.source] ?? "Manual"}
                   </span>
-                  <span className="rounded-full border border-border px-2 py-0.5 text-xs">
+                  <span className="rounded-full border border-[#DFD9D2] bg-[#FAF8F5] px-2.5 py-0.5 font-medium text-stone-700">
                     {METHOD_LABEL[document.extraction_method]}
                   </span>
-                  {document.page_count} halaman &middot;{" "}
-                  {new Date(document.uploaded_at).toLocaleString("id-ID")}
-                  {document.doi && <span className="font-mono text-xs">DOI: {document.doi}</span>}
+                  <span>{document.page_count} halaman</span>
+                  <span>&middot;</span>
+                  <span>{new Date(document.uploaded_at).toLocaleString("id-ID")}</span>
+                  {document.doi && <span className="font-mono text-stone-600">DOI: {document.doi}</span>}
                 </p>
               </div>
               {isAdmin && (
