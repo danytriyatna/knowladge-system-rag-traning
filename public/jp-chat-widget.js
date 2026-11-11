@@ -274,6 +274,23 @@
   `;
   document.body.appendChild(fab);
 
+  function positionFabInRightGutter() {
+    const ojsPage = document.querySelector(".pkp_structure_page");
+    if (!ojsPage) return;
+    const rect = ojsPage.getBoundingClientRect();
+    const rightGutter = document.documentElement.clientWidth - rect.right;
+    const fabW = fab.offsetWidth || 82;
+    if (rightGutter >= fabW + 24) {
+      fab.style.right = Math.round((rightGutter - fabW) / 2) + "px";
+    } else {
+      fab.style.right = "24px";
+    }
+  }
+  positionFabInRightGutter();
+  window.addEventListener("resize", positionFabInRightGutter);
+  window.addEventListener("load", positionFabInRightGutter);
+  requestAnimationFrame(positionFabInRightGutter);
+
   // Buat Jendela Chat
   const win = document.createElement("div");
   win.className = "jp-widget-window";
