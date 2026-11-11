@@ -5,6 +5,7 @@ import { uploadPdf } from "@/lib/storage";
 import { extractText, getPageCount } from "@/lib/pdf";
 import { extractTextWithGemini } from "@/lib/gemini";
 import { requireUser, requireAdmin, logAudit, AuthError } from "@/lib/auth";
+import { listPublishedDocumentSummaries } from "@/lib/publishedLocal";
 
 const MAX_SIZE_BYTES = 25 * 1024 * 1024;
 
@@ -24,53 +25,7 @@ export async function GET() {
 
   if (process.env.DEV_MODE === "true") {
     return NextResponse.json({
-      documents: [
-        {
-          id: "jp-demo-1",
-          filename: "RISHA_Ketahanan_Gempa_2025.pdf",
-          extraction_method: "local",
-          page_count: 12,
-          uploaded_at: "2026-10-15T08:30:00Z",
-          title: "Evaluasi Ketahanan Gempa Rumah Instan Sederhana Sehat (RISHA) di Wilayah Seismik Tinggi",
-          authors: '["Ir. Budi Santoso, M.T.", "Dr. Hendra Wijaya"]',
-          doi: "10.31815/jp.2025.20.1-12",
-          published_year: 2025,
-          volume: "20",
-          issue_number: "1",
-          topics: '["Struktur Tahan Gempa", "RISHA", "Permukiman"]',
-          source: "ojs_harvest"
-        },
-        {
-          id: "jp-demo-2",
-          filename: "Pengolahan_Air_Limbah_Permukiman_2025.pdf",
-          extraction_method: "local",
-          page_count: 10,
-          uploaded_at: "2026-10-18T10:15:00Z",
-          title: "Efektivitas Biofilter Anaerobik-Aerobik pada Pengolahan Air Limbah Permukiman Padat",
-          authors: '["Dr. Rina Astuti", "Ahmad Fauzi, M.Eng"]',
-          doi: "10.31815/jp.2025.20.13-22",
-          published_year: 2025,
-          volume: "20",
-          issue_number: "1",
-          topics: '["Sanitasi Lingkungan", "Air Limbah", "Permukiman Ramah Lingkungan"]',
-          source: "ojs_harvest"
-        },
-        {
-          id: "jp-demo-3",
-          filename: "Karakteristik_Bata_Geopolimer_2024.pdf",
-          extraction_method: "local",
-          page_count: 14,
-          uploaded_at: "2026-10-20T14:00:00Z",
-          title: "Karakteristik Termal dan Kuat Tekan Bata Geopolimer Berbasis Fly Ash untuk Bangunan Rendah Karbon",
-          authors: '["Drs. Kusuma Wardhana, M.Si", "Ir. Dian Pratama"]',
-          doi: "10.31815/jp.2024.19.45-58",
-          published_year: 2024,
-          volume: "19",
-          issue_number: "2",
-          topics: '["Bata Geopolimer", "Efisiensi Energi", "Material Bangunan"]',
-          source: "ojs_harvest"
-        }
-      ]
+      documents: listPublishedDocumentSummaries(),
     });
   }
 

@@ -5,6 +5,10 @@ import { embedTexts } from "@/lib/embedding";
 import { searchSimilarChunks, countEmbeddings, type RetrievedChunk } from "@/lib/rag";
 import { answerFromContext } from "@/lib/chat";
 import { NO_SOURCE_ANSWER, validSourceNumbers } from "@/lib/citation";
+import { searchPublishedOjsCorpus } from "@/lib/publishedLocal";
+
+const OJS_ARTICLE_BASE =
+  process.env.OJS_ARTICLE_BASE_URL ?? "http://localhost/jurnalpermukiman/index.php/JP/article/view";
 
 export const maxDuration = 60;
 
@@ -33,7 +37,24 @@ export async function POST(request: Request) {
       );
     }
 
-    if ((await countEmbeddings()) === 0) {
+    const embeddingCount = await countEmbeddings().catch(() => 0);
+
+    if (embeddingCount === 0) {
+      if (process.env.DEV_MODE === "true") {
+        const localResult = searchPublishedOjsCorpus(question, { limit: 4, mode: "chat" });
+        const id = randomUUID();
+        const created_at = new Date().toISOString();
+        return NextResponse.json(
+          {
+            id,
+            answer: localResult.answer,
+            sources: localResult.sources,
+            grounded: localResult.grounded,
+            created_at,
+          },
+          { status: 200, headers: CORS_HEADERS },
+        );
+      }
       return NextResponse.json(
         {
           error: "Korpus naskah belum diindeks. Hubungi administrator sistem.",
@@ -52,8 +73,15 @@ export async function POST(request: Request) {
       );
     }
 
-    // Top-K pencarian hibrida untuk widget
-    const chunks = await searchSimilarChunks(queryVector, question, 6, 4, undefined, 4);
+    // Top-K pencarian hibrida khusus artikel jurnal OJS yang sudah publish
+    const chunks = await searchSimilarChunks(
+      queryVector,
+      question,
+      6,
+      4,
+      { source: "ojs_harvest" },
+      4,
+    );
 
     if (chunks.length === 0) {
       return NextResponse.json(
@@ -88,6 +116,15 @@ export async function POST(request: Request) {
         filename: c.filename,
         chunk_index: c.chunk_index,
         similarity: c.similarity,
+        title: c.title || c.filename,
+        authors: c.authors || "",
+        published_year: c.published_year ?? null,
+        volume: c.volume ?? null,
+        issue_number: c.issue_number ?? null,
+        doi: c.doi ?? null,
+        ojs_article_id: c.ojs_article_id ?? null,
+        article_url: c.ojs_article_id ? `${OJS_ARTICLE_BASE}/${c.ojs_article_id}` : null,
+        source: c.source ?? "ojs_harvest",
         snippet: c.content.slice(0, 200) + (c.content.length > 200 ? "..." : ""),
       }));
 

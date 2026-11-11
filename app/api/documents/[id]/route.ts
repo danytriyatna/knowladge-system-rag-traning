@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { sql, type DocumentRecord } from "@/lib/db";
 import { deletePdf } from "@/lib/storage";
 import { requireUser, requireAdmin, logAudit, AuthError } from "@/lib/auth";
+import { getPublishedDocumentById } from "@/lib/publishedLocal";
 
 export async function GET(
   _request: Request,
@@ -17,6 +18,15 @@ export async function GET(
   }
 
   const { id } = await ctx.params;
+
+  if (process.env.DEV_MODE === "true") {
+    const localDoc = getPublishedDocumentById(id);
+    if (!localDoc) {
+      return NextResponse.json({ error: "Dokumen tidak ditemukan" }, { status: 404 });
+    }
+    return NextResponse.json({ document: localDoc });
+  }
+
   const [document] = await sql<DocumentRecord[]>`SELECT * FROM documents WHERE id = ${id}`;
 
   if (!document) {

@@ -12,6 +12,10 @@ import {
 import { answerFromContext, synthesizeKajian } from "@/lib/chat";
 import { evidenceStrengthFor, combineWeakestLink } from "@/lib/evidence";
 import { NO_SOURCE_ANSWER, validSourceNumbers } from "@/lib/citation";
+import { searchPublishedOjsCorpus, type PublishedSourceCitation } from "@/lib/publishedLocal";
+
+const OJS_ARTICLE_BASE =
+  process.env.OJS_ARTICLE_BASE_URL ?? "http://localhost/jurnalpermukiman/index.php/JP/article/view";
 
 export const maxDuration = 60;
 
@@ -25,12 +29,7 @@ export const maxDuration = 60;
 const TOP_K_CHAT: [number, number, number] = [10, 6, 10];
 const TOP_K_KAJIAN: [number, number, number] = [18, 10, 12];
 
-interface SourceCitation {
-  document_id: string;
-  filename: string;
-  chunk_index: number;
-  similarity: number;
-}
+type SourceCitation = PublishedSourceCitation;
 
 function toCitation(chunk: RetrievedChunk): SourceCitation {
   return {
@@ -38,6 +37,16 @@ function toCitation(chunk: RetrievedChunk): SourceCitation {
     filename: chunk.filename,
     chunk_index: chunk.chunk_index,
     similarity: chunk.similarity,
+    title: chunk.title || chunk.filename,
+    authors: chunk.authors || "",
+    published_year: chunk.published_year ?? null,
+    volume: chunk.volume ?? null,
+    issue_number: chunk.issue_number ?? null,
+    doi: chunk.doi ?? null,
+    ojs_article_id: chunk.ojs_article_id ?? null,
+    article_url: chunk.ojs_article_id ? `${OJS_ARTICLE_BASE}/${chunk.ojs_article_id}` : null,
+    source: chunk.source === "manual_upload" ? "manual_upload" : "ojs_harvest",
+    snippet: chunk.content.slice(0, 200) + (chunk.content.length > 200 ? "..." : ""),
   };
 }
 
@@ -57,6 +66,9 @@ export async function POST(request: Request) {
   const mode: QueryMode = body?.mode === "kajian" ? "kajian" : "chat";
 
   const filters: SearchFilters = {};
+  if (body?.publishedOnly !== false) {
+    filters.source = "ojs_harvest";
+  }
   if (typeof body?.filters?.year === "number") filters.year = body.filters.year;
   if (Array.isArray(body?.filters?.topics)) {
     const topics = body.filters.topics.filter((t: unknown): t is string => typeof t === "string");
@@ -68,25 +80,24 @@ export async function POST(request: Request) {
   }
 
   if (process.env.DEV_MODE === "true" && (await countEmbeddings().catch(() => 0)) === 0) {
-    const demoAnswer = `Berdasarkan korpus riset Jurnal Permukiman [1], sistem konstruksi berkelanjutan dan perumahan ramah gempa (seperti RISHA) memanfaatkan komponen modular pracetak berstandar ketat guna meminimalisasi risiko kegagalan struktur saat terjadi goncangan seismik. Hasil pengujian menunjukkan bahwa keandalan sambungan simpul pelat dan baut merupakan faktor krusial dalam menyerap energi getaran, sebagaimana diatur dalam pedoman teknis Direktorat Jenderal Cipta Karya [1][2].`;
-    const demoSources: SourceCitation[] = [
-      {
-        document_id: "jp-demo-1",
-        filename: "RISHA_Ketahanan_Gempa_2025.pdf",
-        chunk_index: 0,
-        similarity: 0.91,
-      },
-      {
-        document_id: "jp-demo-3",
-        filename: "Karakteristik_Bata_Geopolimer_2024.pdf",
-        chunk_index: 1,
-        similarity: 0.84,
-      },
-    ];
+    const localResult = searchPublishedOjsCorpus(question, {
+      filters: { year: filters.year, topics: filters.topics },
+      limit: mode === "kajian" ? 5 : 4,
+      mode,
+    });
     return NextResponse.json({
-      answer: demoAnswer,
-      sources: demoSources,
-      evidence_strength: "kuat",
+      id: randomUUID(),
+      mode: localResult.mode,
+      answer: localResult.answer,
+      sources: localResult.sources,
+      grounded: localResult.grounded,
+      created_at: new Date().toISOString(),
+      ...(localResult.mode === "kajian"
+        ? {
+            points: localResult.points ?? [],
+            evidenceStrength: localResult.evidenceStrength ?? "lemah",
+          }
+        : {}),
     });
   }
 
@@ -132,6 +143,18 @@ export async function POST(request: Request) {
   }
   const id = randomUUID();
   const created_at = new Date().toISOString();
+
+  if (chunks.length === 0) {
+    return NextResponse.json({
+      id,
+      mode,
+      answer: NO_SOURCE_ANSWER,
+      sources: [],
+      created_at,
+      grounded: false,
+      ...(mode === "kajian" ? { points: [], evidenceStrength: "lemah" as EvidenceStrength } : {}),
+    });
+  }
 
   if (mode === "kajian") {
     let kajian;

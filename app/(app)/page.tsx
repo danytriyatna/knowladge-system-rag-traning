@@ -54,6 +54,14 @@ interface ChatSource {
   filename: string;
   chunk_index: number;
   similarity: number;
+  title?: string;
+  authors?: string;
+  published_year?: number | null;
+  volume?: string | null;
+  issue_number?: string | null;
+  doi?: string | null;
+  article_url?: string | null;
+  snippet?: string;
 }
 
 interface KajianPoint {
@@ -993,30 +1001,36 @@ export default function Home() {
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <p className="text-sm text-muted">
                     {queryMode === "kajian"
-                      ? "Mode Kajian: sintesis temuan dari beberapa naskah sekaligus, lengkap dengan indikator kekuatan bukti per klaim."
-                      : "Tanyakan apa saja dari seluruh dokumen yang sudah di-embed. Jawaban disusun AI hanya berdasarkan isi dokumen kamu."}
+                      ? "Mode Kajian: sintesis temuan dari beberapa artikel jurnal terbit sekaligus, lengkap dengan indikator kekuatan bukti per klaim."
+                      : "Jawaban dan referensi dokumen hanya diambil dari artikel Jurnal Permukiman yang telah terbit. Pertanyaan di luar data jurnal tidak akan menampilkan hasil."}
                   </p>
-                  <div className="flex shrink-0 gap-1 rounded-full border border-border bg-surface p-0.5">
-                    <button
-                      onClick={() => setQueryMode("chat")}
-                      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                        queryMode === "chat"
-                          ? "bg-accent text-accent-foreground"
-                          : "text-muted hover:text-foreground"
-                      }`}
-                    >
-                      Chat
-                    </button>
-                    <button
-                      onClick={() => setQueryMode("kajian")}
-                      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                        queryMode === "kajian"
-                          ? "bg-accent text-accent-foreground"
-                          : "text-muted hover:text-foreground"
-                      }`}
-                    >
-                      Kajian
-                    </button>
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
+                      Hanya Jurnal Publish OJS
+                    </span>
+                    <div className="flex shrink-0 gap-1 rounded-full border border-border bg-surface p-0.5">
+                      <button
+                        onClick={() => setQueryMode("chat")}
+                        className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                          queryMode === "chat"
+                            ? "bg-accent text-accent-foreground"
+                            : "text-muted hover:text-foreground"
+                        }`}
+                      >
+                        Chat
+                      </button>
+                      <button
+                        onClick={() => setQueryMode("kajian")}
+                        className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                          queryMode === "kajian"
+                            ? "bg-accent text-accent-foreground"
+                            : "text-muted hover:text-foreground"
+                        }`}
+                      >
+                        Kajian
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1150,15 +1164,26 @@ export default function Home() {
                                       )}
                                     </span>
                                   </div>
-                                  <div className="ml-4 mt-1 flex flex-wrap gap-1">
+                                  <div className="ml-4 mt-1 flex flex-wrap gap-1.5">
                                     {point.sources.map((s, si) => (
-                                      <Link
-                                        key={si}
-                                        href={`/documents/${s.document_id}`}
-                                        className="rounded-full border border-zinc-300 bg-white/80 px-2 py-0.5 text-[11px] text-zinc-600 hover:border-accent hover:text-accent-text dark:border-zinc-700 dark:bg-zinc-900/80 dark:text-zinc-400"
-                                      >
-                                        {s.filename}
-                                      </Link>
+                                      <div key={si} className="inline-flex items-center gap-1.5 rounded-full border border-zinc-300 bg-white/90 px-2.5 py-0.5 text-[11px] text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900/80 dark:text-zinc-300">
+                                        <Link
+                                          href={`/documents/${s.document_id}`}
+                                          className="font-medium hover:text-accent-text hover:underline"
+                                        >
+                                          {s.title || s.filename}
+                                        </Link>
+                                        {s.article_url && (
+                                          <a
+                                            href={s.article_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="font-semibold text-accent hover:underline"
+                                          >
+                                            OJS &#8599;
+                                          </a>
+                                        )}
+                                      </div>
                                     ))}
                                   </div>
                                 </li>
@@ -1174,16 +1199,63 @@ export default function Home() {
                           message.role === "assistant" &&
                           message.sources &&
                           message.sources.length > 0 && (
-                            <div className="flex max-w-[75%] flex-wrap gap-1.5">
-                              {message.sources.map((source, j) => (
-                                <Link
-                                  key={j}
-                                  href={`/documents/${source.document_id}`}
-                                  className="rounded-full border border-zinc-300 bg-white/80 px-2 py-0.5 text-xs text-zinc-600 hover:border-accent hover:text-accent-text dark:border-zinc-700 dark:bg-zinc-900/80 dark:text-zinc-400"
-                                >
-                                  {source.filename} &middot; bagian {source.chunk_index + 1}
-                                </Link>
-                              ))}
+                            <div className="flex max-w-[85%] flex-col gap-1.5 rounded-xl border border-[#E5E0D8] bg-white/95 p-3 shadow-xs">
+                              <span className="text-[11px] font-bold uppercase tracking-wider text-[#8C2806]">
+                                Referensi Jurnal Terbit OJS ({message.sources.length})
+                              </span>
+                              <div className="flex flex-col gap-2">
+                                {message.sources.map((source, j) => {
+                                  const metaParts = [
+                                    source.authors,
+                                    [
+                                      source.volume ? `Vol. ${source.volume}` : null,
+                                      source.issue_number ? `No. ${source.issue_number}` : null,
+                                      source.published_year ? `(${source.published_year})` : null,
+                                    ]
+                                      .filter(Boolean)
+                                      .join(" "),
+                                    source.doi ? `DOI: ${source.doi}` : null,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" · ");
+
+                                  return (
+                                    <div
+                                      key={j}
+                                      className="rounded-lg border-l-2 border-[#C13D0D] bg-[#FAF8F4] px-2.5 py-2 text-xs text-zinc-700"
+                                    >
+                                      <div className="flex items-start justify-between gap-2">
+                                        <Link
+                                          href={`/documents/${source.document_id}`}
+                                          className="font-semibold text-zinc-900 hover:text-[#C13D0D] hover:underline"
+                                        >
+                                          [{j + 1}] {source.title || source.filename}
+                                        </Link>
+                                        {source.article_url && (
+                                          <a
+                                            href={source.article_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="shrink-0 font-semibold text-[#C13D0D] hover:underline"
+                                          >
+                                            OJS &#8599;
+                                          </a>
+                                        )}
+                                      </div>
+                                      {metaParts && (
+                                        <p className="mt-0.5 text-[11px] text-zinc-500">
+                                          {metaParts}
+                                        </p>
+                                      )}
+                                      {source.snippet && (
+                                        <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-zinc-600">
+                                          {source.snippet}
+                                        </p>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             </div>
                           )}
                       </div>

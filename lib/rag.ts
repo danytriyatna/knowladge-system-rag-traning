@@ -2,6 +2,8 @@ import { sql } from "./db";
 import { vectorToPgLiteral } from "./embedding";
 import { isNormativeQuestion, expandQueryTerms } from "./query";
 
+export const MIN_SEMANTIC_SIMILARITY = 0.35;
+
 export interface RetrievedChunk {
   document_id: string;
   filename: string;
@@ -9,11 +11,20 @@ export interface RetrievedChunk {
   content: string;
   similarity: number;
   matchedBy: "semantic" | "keyword" | "regulation";
+  title?: string;
+  authors?: string;
+  published_year?: number | null;
+  volume?: string;
+  issue_number?: string;
+  doi?: string;
+  ojs_article_id?: number | null;
+  source?: string;
 }
 
 export interface SearchFilters {
   year?: number;
   topics?: string[];
+  source?: "ojs_harvest" | "manual_upload";
 }
 
 interface ChunkRow {
@@ -23,6 +34,14 @@ interface ChunkRow {
   chunk_index: number;
   content: string;
   similarity: number;
+  title?: string;
+  authors?: string;
+  published_year?: number | null;
+  volume?: string;
+  issue_number?: string;
+  doi?: string;
+  ojs_article_id?: number | null;
+  source?: string;
 }
 
 // Kata umum Bahasa Indonesia yang dibuang dari query pencarian kata kunci
@@ -53,6 +72,7 @@ function escapeLike(value: string): string {
 /** Fragmen WHERE tambahan untuk filter dokumen (tahun, tema) — kosong kalau tidak difilter. */
 function buildDocumentFilter(filters: SearchFilters | undefined) {
   const yearFragment = filters?.year ? sql`AND d.published_year = ${filters.year}` : sql``;
+  const sourceFragment = filters?.source ? sql`AND d.source = ${filters.source}` : sql``;
 
   let topicFragment = sql``;
   if (filters?.topics && filters.topics.length > 0) {
@@ -63,7 +83,7 @@ function buildDocumentFilter(filters: SearchFilters | undefined) {
     topicFragment = sql`AND (${combined})`;
   }
 
-  return sql`${yearFragment} ${topicFragment}`;
+  return sql`${yearFragment} ${sourceFragment} ${topicFragment}`;
 }
 
 /** Top-K chunk berdasarkan cosine similarity (pgvector, terindeks HNSW). */
@@ -75,6 +95,7 @@ async function searchSemantic(
   const filterFragment = buildDocumentFilter(filters);
   return sql<ChunkRow[]>`
     SELECT c.id, e.document_id, d.filename, c.chunk_index, c.content,
+           d.title, d.authors, d.published_year, d.volume, d.issue_number, d.doi, d.ojs_article_id, d.source,
            1 - (e.vector <=> ${queryVectorLiteral}::vector) AS similarity
     FROM embeddings e
     JOIN chunks c ON c.id = e.chunk_id
@@ -104,6 +125,7 @@ async function searchKeyword(
   try {
     return await sql<ChunkRow[]>`
       SELECT c.id, c.document_id, d.filename, c.chunk_index, c.content,
+             d.title, d.authors, d.published_year, d.volume, d.issue_number, d.doi, d.ojs_article_id, d.source,
              1 - (e.vector <=> ${queryVectorLiteral}::vector) AS similarity
       FROM chunks c
       JOIN documents d ON d.id = c.document_id
@@ -138,6 +160,7 @@ async function searchRegulation(
   try {
     return await sql<ChunkRow[]>`
       SELECT c.id, c.document_id, d.filename, c.chunk_index, c.content,
+             d.title, d.authors, d.published_year, d.volume, d.issue_number, d.doi, d.ojs_article_id, d.source,
              1 - (e.vector <=> ${queryVectorLiteral}::vector) AS similarity,
              COUNT(m.id) AS mention_count
       FROM chunks c
@@ -145,7 +168,8 @@ async function searchRegulation(
       JOIN documents d ON d.id = c.document_id
       JOIN embeddings e ON e.chunk_id = c.id
       WHERE c.document_id IN ${sql(documentIds)}
-      GROUP BY c.id, c.document_id, d.filename, c.chunk_index, c.content, e.vector
+      GROUP BY c.id, c.document_id, d.filename, c.chunk_index, c.content,
+               d.title, d.authors, d.published_year, d.volume, d.issue_number, d.doi, d.ojs_article_id, d.source, e.vector
       ORDER BY mention_count DESC, c.chunk_index ASC
       LIMIT ${limit}
     `;
@@ -162,6 +186,14 @@ function toRetrieved(row: ChunkRow, matchedBy: RetrievedChunk["matchedBy"]): Ret
     content: row.content,
     similarity: Number(row.similarity),
     matchedBy,
+    title: row.title,
+    authors: row.authors,
+    published_year: row.published_year ?? null,
+    volume: row.volume,
+    issue_number: row.issue_number,
+    doi: row.doi,
+    ojs_article_id: row.ojs_article_id ?? null,
+    source: row.source,
   };
 }
 
@@ -182,7 +214,9 @@ export async function searchSimilarChunks(
 ): Promise<RetrievedChunk[]> {
   const queryVectorLiteral = vectorToPgLiteral(queryVector);
 
-  const semanticRows = await searchSemantic(queryVectorLiteral, semanticK, filters);
+  const semanticRows = (await searchSemantic(queryVectorLiteral, semanticK, filters)).filter(
+    (row) => Number(row.similarity) >= MIN_SEMANTIC_SIMILARITY
+  );
   const merged = new Map<string, RetrievedChunk & { id: string }>();
   for (const row of semanticRows) {
     merged.set(row.id, { id: row.id, ...toRetrieved(row, "semantic") });
@@ -213,13 +247,21 @@ export async function searchSimilarChunks(
 
   return Array.from(merged.values())
     .sort((a, b) => b.similarity - a.similarity)
-    .map(({ document_id, filename, chunk_index, content, similarity, matchedBy }) => ({
-      document_id,
-      filename,
-      chunk_index,
-      content,
-      similarity,
-      matchedBy,
+    .map((chunk) => ({
+      document_id: chunk.document_id,
+      filename: chunk.filename,
+      chunk_index: chunk.chunk_index,
+      content: chunk.content,
+      similarity: chunk.similarity,
+      matchedBy: chunk.matchedBy,
+      title: chunk.title,
+      authors: chunk.authors,
+      published_year: chunk.published_year,
+      volume: chunk.volume,
+      issue_number: chunk.issue_number,
+      doi: chunk.doi,
+      ojs_article_id: chunk.ojs_article_id,
+      source: chunk.source,
     }));
 }
 
