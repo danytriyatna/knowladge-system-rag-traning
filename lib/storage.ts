@@ -1,47 +1,83 @@
-import { createClient } from "@supabase/supabase-js";
+import fs from "node:fs/promises";
+import path from "node:path";
 
-const BUCKET = "documents-pdfs";
-
-declare global {
-  var __supabaseStorage: ReturnType<typeof createClient> | undefined;
+/**
+ * Mendapatkan direktori penyimpanan berkas PDF fisik dari variabel lingkungan DOCUMENT_STORAGE_DIR.
+ * Default fallback: [process.cwd()]/storage/documents-pdfs
+ */
+export function getStorageDir(): string {
+  const envPath = process.env.DOCUMENT_STORAGE_DIR?.trim();
+  if (envPath) {
+    return path.isAbsolute(envPath)
+      ? envPath
+      : path.resolve(/*turbopackIgnore: true*/ process.cwd(), envPath);
+  }
+  return path.resolve(/*turbopackIgnore: true*/ process.cwd(), "storage", "documents-pdfs");
 }
 
-function getClient() {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY belum diset di environment");
+/**
+ * Memastikan path file aman dari serangan path traversal (..)
+ * dan selalu berada di dalam direktori penyimpanan yang sah.
+ */
+function resolveStoragePath(fileNameOrKey: string): string {
+  const baseDir = getStorageDir();
+  const safeName = path.basename(fileNameOrKey);
+  const resolved = path.resolve(/*turbopackIgnore: true*/ baseDir, safeName);
+  const normalizedBase = path.resolve(/*turbopackIgnore: true*/ baseDir);
+
+  if (!resolved.startsWith(normalizedBase + path.sep) && resolved !== normalizedBase) {
+    throw new Error("Akses path penyimpanan tidak sah (potensi path traversal terdeteksi).");
   }
-  if (!global.__supabaseStorage) {
-    // service_role key dipakai — bypass RLS, hanya boleh dipanggil server-side.
-    global.__supabaseStorage = createClient(url, key, {
-      auth: { persistSession: false },
-    });
-  }
-  return global.__supabaseStorage;
+  return resolved;
 }
 
-/** Object key PDF suatu dokumen di bucket — sama dengan yang disimpan di documents.stored_path. */
+/** Object key PDF suatu dokumen — sama dengan yang disimpan di documents.stored_path. */
 export function pdfObjectKey(documentId: string): string {
   return `${documentId}.pdf`;
 }
 
+/**
+ * Menyimpan buffer PDF ke sistem berkas lokal.
+ * Folder induk akan dibuat secara otomatis bila belum ada.
+ */
 export async function uploadPdf(documentId: string, buffer: Buffer): Promise<string> {
+  const baseDir = getStorageDir();
+  await fs.mkdir(baseDir, { recursive: true });
+
   const key = pdfObjectKey(documentId);
-  const { error } = await getClient()
-    .storage.from(BUCKET)
-    .upload(key, buffer, { contentType: "application/pdf", upsert: true });
-  if (error) throw new Error(`Gagal upload PDF ke Supabase Storage: ${error.message}`);
+  const targetPath = resolveStoragePath(key);
+  await fs.writeFile(targetPath, buffer);
   return key;
 }
 
+/**
+ * Membaca buffer berkas PDF dari sistem berkas lokal.
+ */
 export async function downloadPdf(objectKey: string): Promise<Buffer> {
-  const { data, error } = await getClient().storage.from(BUCKET).download(objectKey);
-  if (error) throw new Error(`Gagal mengambil PDF dari Supabase Storage: ${error.message}`);
-  return Buffer.from(await data.arrayBuffer());
+  const targetPath = resolveStoragePath(objectKey);
+  try {
+    return await fs.readFile(targetPath);
+  } catch (err: unknown) {
+    const error = err as NodeJS.ErrnoException;
+    if (error?.code === "ENOENT") {
+      throw new Error(`Berkas PDF "${objectKey}" tidak ditemukan di penyimpanan lokal.`);
+    }
+    throw new Error(`Gagal membaca berkas PDF: ${error?.message || String(err)}`);
+  }
 }
 
+/**
+ * Menghapus berkas PDF dari sistem berkas lokal bila ada.
+ */
 export async function deletePdf(objectKey: string): Promise<void> {
-  const { error } = await getClient().storage.from(BUCKET).remove([objectKey]);
-  if (error) throw new Error(`Gagal menghapus PDF dari Supabase Storage: ${error.message}`);
+  const targetPath = resolveStoragePath(objectKey);
+  try {
+    await fs.unlink(targetPath);
+  } catch (err: unknown) {
+    const error = err as NodeJS.ErrnoException;
+    // Jika berkas memang tidak ada, abaikan
+    if (error?.code !== "ENOENT") {
+      throw new Error(`Gagal menghapus berkas PDF: ${error?.message || String(err)}`);
+    }
+  }
 }

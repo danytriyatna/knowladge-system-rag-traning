@@ -1,6 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Users, MessageSquare, ShieldCheck, UserPlus, ChevronRight, AlertCircle } from "lucide-react";
 
 type UserRole = "admin" | "unit_user";
 
@@ -37,35 +51,24 @@ interface ChatHistoryItem {
   user_full_name: string | null;
 }
 
-const EVIDENCE_LABEL: Record<EvidenceStrength, string> = {
-  kuat: "Kuat",
-  sedang: "Sedang",
-  lemah: "Lemah",
-};
-
-const EVIDENCE_CLASS: Record<EvidenceStrength, string> = {
-  kuat: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400",
-  sedang: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400",
-  lemah: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400",
-};
-
-const ACTION_LABEL: Record<string, string> = {
-  login: "Login",
-  query_chat: "Tanya (Chat)",
-  query_kajian: "Tanya (Kajian)",
-  manual_upload: "Upload manual",
-  delete_document: "Hapus dokumen",
-  sync_triggered: "Jalankan sinkronisasi",
-  create_user: "Buat akun",
+const EVIDENCE_CONFIG: Record<EvidenceStrength, { label: string; variant: "success" | "warning" | "destructive" }> = {
+  kuat: { label: "Kuat", variant: "success" },
+  sedang: { label: "Sedang", variant: "warning" },
+  lemah: { label: "Lemah", variant: "destructive" },
 };
 
 export default function AdminPanel() {
-  const [tab, setTab] = useState<"users" | "chat" | "audit">("users");
-
+  const [tab, setTab] = useState("users");
   const [users, setUsers] = useState<UserItem[] | null>(null);
+  const [logs, setLogs] = useState<AuditLogItem[] | null>(null);
+  const [chatHistory, setChatHistory] = useState<ChatHistoryItem[] | null>(null);
+  const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
   const [userError, setUserError] = useState<string | null>(null);
+  const [logError, setLogError] = useState<string | null>(null);
+  const [chatHistoryError, setChatHistoryError] = useState<string | null>(null);
+
+  // Form tambah user
   const [showForm, setShowForm] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -73,13 +76,7 @@ export default function AdminPanel() {
     role: "unit_user" as UserRole,
     unit: "",
   });
-
-  const [logs, setLogs] = useState<AuditLogItem[] | null>(null);
-  const [logError, setLogError] = useState<string | null>(null);
-
-  const [chatHistory, setChatHistory] = useState<ChatHistoryItem[] | null>(null);
-  const [chatHistoryError, setChatHistoryError] = useState<string | null>(null);
-  const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   async function loadUsers() {
     try {
@@ -146,248 +143,267 @@ export default function AdminPanel() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex gap-1 border-b border-border">
-        <button
-          onClick={() => setTab("users")}
-          className={`px-4 py-2 text-sm font-medium transition-colors ${
-            tab === "users"
-              ? "border-b-2 border-accent text-accent-text"
-              : "text-muted hover:text-foreground"
-          }`}
-        >
-          Kelola Pengguna
-        </button>
-        <button
-          onClick={() => setTab("chat")}
-          className={`px-4 py-2 text-sm font-medium transition-colors ${
-            tab === "chat"
-              ? "border-b-2 border-accent text-accent-text"
-              : "text-muted hover:text-foreground"
-          }`}
-        >
-          Riwayat Chat
-        </button>
-        <button
-          onClick={() => setTab("audit")}
-          className={`px-4 py-2 text-sm font-medium transition-colors ${
-            tab === "audit"
-              ? "border-b-2 border-accent text-accent-text"
-              : "text-muted hover:text-foreground"
-          }`}
-        >
-          Log Audit
-        </button>
-      </div>
+    <div className="flex flex-col gap-6">
+      <Tabs value={tab} onValueChange={setTab} className="w-full">
+        <TabsList className="h-12 w-full justify-start rounded-2xl bg-[#EEF4FC] p-1.5 sm:w-auto">
+          <TabsTrigger value="users" className="gap-2 rounded-xl px-4 py-2 text-sm font-semibold">
+            <Users className="h-4 w-4" />
+            Kelola Pengguna
+          </TabsTrigger>
+          <TabsTrigger value="chat" className="gap-2 rounded-xl px-4 py-2 text-sm font-semibold">
+            <MessageSquare className="h-4 w-4" />
+            Riwayat Tanya JP
+          </TabsTrigger>
+          <TabsTrigger value="audit" className="gap-2 rounded-xl px-4 py-2 text-sm font-semibold">
+            <ShieldCheck className="h-4 w-4" />
+            Log Audit Sistem
+          </TabsTrigger>
+        </TabsList>
 
-      {tab === "users" && (
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted">
-              Buat akun untuk staf sekretariat jurnal (Admin) atau unit lain (Pengguna).
+        {/* Tab 1: Pengguna */}
+        <TabsContent value="users" className="mt-4 flex flex-col gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <p className="text-sm text-[#64748B]">
+              Kelola akun staf redaksi jurnal (Admin) atau peneliti &amp; perekayasa unit (Pengguna Unit).
             </p>
-            <button
+            <Button
               onClick={() => setShowForm((v) => !v)}
-              className="press shrink-0 rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:opacity-90"
+              variant={showForm ? "outline" : "default"}
+              className="gap-2 rounded-xl"
             >
-              {showForm ? "Batal" : "+ Buat Akun"}
-            </button>
+              <UserPlus className="h-4 w-4" />
+              {showForm ? "Batal" : "Buat Akun Baru"}
+            </Button>
           </div>
 
-          {userError && <p className="fade-in text-sm text-red-600 dark:text-red-400">{userError}</p>}
-
-          {showForm && (
-            <form
-              onSubmit={handleCreateUser}
-              className="fade-in flex flex-col gap-3 rounded-xl border border-border bg-surface p-4"
-            >
-              <input
-                required
-                type="email"
-                placeholder="Email"
-                value={form.email}
-                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
-              />
-              <input
-                required
-                type="text"
-                placeholder="Nama lengkap"
-                value={form.fullName}
-                onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))}
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
-              />
-              <input
-                required
-                type="password"
-                placeholder="Kata sandi (minimal 8 karakter)"
-                value={form.password}
-                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
-              />
-              <div className="flex gap-3">
-                <select
-                  value={form.role}
-                  onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as UserRole }))}
-                  className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
-                >
-                  <option value="unit_user">Pengguna Unit</option>
-                  <option value="admin">Admin</option>
-                </select>
-                <input
-                  type="text"
-                  placeholder="Nama unit (opsional)"
-                  value={form.unit}
-                  onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
-                  className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={saving}
-                className="press w-fit rounded-full bg-accent px-5 py-2 text-sm font-medium text-accent-foreground hover:opacity-90 disabled:opacity-50"
-              >
-                {saving ? "Menyimpan..." : "Simpan Akun"}
-              </button>
-            </form>
-          )}
-
-          {users === null && <p className="text-sm text-muted">Memuat...</p>}
-          {users && (
-            <div className="overflow-x-auto rounded-xl border border-border">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-surface text-xs text-muted">
-                  <tr>
-                    <th className="px-3 py-2 font-medium">Nama</th>
-                    <th className="px-3 py-2 font-medium">Email</th>
-                    <th className="px-3 py-2 font-medium">Peran</th>
-                    <th className="px-3 py-2 font-medium">Unit</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((u) => (
-                    <tr key={u.id} className="border-t border-border">
-                      <td className="px-3 py-2 text-foreground">{u.full_name}</td>
-                      <td className="px-3 py-2 text-muted">{u.email}</td>
-                      <td className="px-3 py-2">
-                        <span className="rounded-full bg-accent-soft px-2 py-0.5 text-xs text-accent-text">
-                          {u.role === "admin" ? "Admin" : "Pengguna Unit"}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-muted">{u.unit ?? "-"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {userError && (
+            <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{userError}</span>
             </div>
           )}
-        </div>
-      )}
 
-      {tab === "chat" && (
-        <div className="flex flex-col gap-3">
-          <p className="text-sm text-muted">
-            Riwayat pertanyaan Chat &amp; Kajian dari seluruh pengguna lintas unit (200 terbaru).
+          {showForm && (
+            <Card className="border-[#C2CEE0] bg-white animate-in fade-in-50">
+              <CardContent className="p-6">
+                <h4 className="mb-4 text-sm font-bold text-[#0B254B]">Form Akun Baru</h4>
+                <form onSubmit={handleCreateUser} className="flex flex-col gap-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-[#0B254B]">Email</label>
+                      <Input
+                        required
+                        type="email"
+                        placeholder="nama@pu.go.id"
+                        value={form.email}
+                        onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-[#0B254B]">Nama Lengkap</label>
+                      <Input
+                        required
+                        type="text"
+                        placeholder="Nama dan gelar"
+                        value={form.fullName}
+                        onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-[#0B254B]">Kata Sandi</label>
+                      <Input
+                        required
+                        type="password"
+                        placeholder="Minimal 8 karakter"
+                        value={form.password}
+                        onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-semibold text-[#0B254B]">Peran</label>
+                        <select
+                          value={form.role}
+                          onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as UserRole }))}
+                          className="h-10 rounded-xl border border-[#D9E1EC] bg-white px-3 text-sm text-[#1C1917] outline-none focus:ring-2 focus:ring-[#123B72]"
+                        >
+                          <option value="unit_user">Pengguna Unit</option>
+                          <option value="admin">Administrator</option>
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-semibold text-[#0B254B]">Unit Kerja</label>
+                        <Input
+                          type="text"
+                          placeholder="Puskim / Balai"
+                          value={form.unit}
+                          onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowForm(false)}
+                    >
+                      Batal
+                    </Button>
+                    <Button type="submit" disabled={saving}>
+                      {saving ? "Menyimpan..." : "Simpan Akun"}
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          )}
+
+          {users === null && <p className="text-sm text-[#64748B]">Memuat data pengguna...</p>}
+          {users && (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nama Pengguna</TableHead>
+                  <TableHead>Email Akun</TableHead>
+                  <TableHead>Peran Akses</TableHead>
+                  <TableHead>Unit Kerja</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {users.map((u) => (
+                  <TableRow key={u.id}>
+                    <TableCell className="font-semibold text-[#0B254B]">{u.full_name}</TableCell>
+                    <TableCell className="text-[#64748B]">{u.email}</TableCell>
+                    <TableCell>
+                      <Badge variant={u.role === "admin" ? "default" : "secondary"}>
+                        {u.role === "admin" ? "Administrator" : "Pengguna Unit"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-[#64748B]">{u.unit ?? "-"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </TabsContent>
+
+        {/* Tab 2: Riwayat Chat */}
+        <TabsContent value="chat" className="mt-4 flex flex-col gap-4">
+          <p className="text-sm text-[#64748B]">
+            Riwayat interaksi tanya jawab dan asistensi kajian ilmiah dari seluruh pengguna (200 terbaru).
           </p>
           {chatHistoryError && (
-            <p className="fade-in text-sm text-red-600 dark:text-red-400">{chatHistoryError}</p>
+            <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{chatHistoryError}</span>
+            </div>
           )}
-          {chatHistory === null && <p className="text-sm text-muted">Memuat...</p>}
+          {chatHistory === null && <p className="text-sm text-[#64748B]">Memuat riwayat chat...</p>}
           {chatHistory && chatHistory.length === 0 && (
-            <p className="text-sm text-muted">Belum ada riwayat chat.</p>
+            <p className="text-sm text-[#64748B]">Belum ada riwayat percakapan.</p>
           )}
           {chatHistory && chatHistory.length > 0 && (
-            <ul className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2.5">
               {chatHistory.map((item) => {
                 const isExpanded = expandedHistoryId === item.id;
                 return (
-                  <li key={item.id} className="rounded-xl border border-border bg-surface">
+                  <Card key={item.id} className="border-[#D9E1EC] overflow-hidden">
                     <button
                       onClick={() => setExpandedHistoryId(isExpanded ? null : item.id)}
-                      className="flex w-full items-start justify-between gap-3 p-4 text-left"
+                      className="flex w-full items-start justify-between gap-3 p-4 text-left transition-colors hover:bg-[#EEF4FC]/40 cursor-pointer"
                     >
                       <div className="flex min-w-0 flex-col gap-1">
-                        <span className="flex items-center gap-2 text-sm font-medium text-foreground">
-                          <span
-                            className={`inline-block transition-transform ${isExpanded ? "rotate-90" : ""}`}
-                          >
-                            &#9656;
-                          </span>
+                        <span className="flex items-center gap-2 text-sm font-semibold text-[#0B254B]">
+                          <ChevronRight
+                            className={`h-4 w-4 shrink-0 text-[#123B72] transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                          />
                           <span className="truncate">{item.question}</span>
                         </span>
-                        <span className="flex flex-wrap items-center gap-2 text-xs text-muted">
-                          <span>{item.user_full_name ?? item.user_email ?? "Tidak diketahui"}</span>
-                          <span>&middot;</span>
+                        <span className="flex flex-wrap items-center gap-2 pl-6 text-xs text-[#64748B]">
+                          <span>{item.user_full_name ?? item.user_email ?? "Anonim"}</span>
+                          <span>&bull;</span>
                           <span>{new Date(item.created_at).toLocaleString("id-ID")}</span>
-                          {item.mode === "kajian" && (
-                            <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[10px] font-medium text-accent-text">
-                              Kajian
-                            </span>
-                          )}
-                          {item.evidence_strength && (
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${EVIDENCE_CLASS[item.evidence_strength]}`}
-                            >
-                              {EVIDENCE_LABEL[item.evidence_strength]}
-                            </span>
-                          )}
                         </span>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        {item.evidence_strength && (
+                          <Badge variant={EVIDENCE_CONFIG[item.evidence_strength].variant}>
+                            Bukti {EVIDENCE_CONFIG[item.evidence_strength].label}
+                          </Badge>
+                        )}
+                        <Badge variant="outline" className="uppercase text-[10px]">
+                          {item.mode}
+                        </Badge>
                       </div>
                     </button>
                     {isExpanded && (
-                      <div className="fade-in border-t border-border p-4">
-                        <p className="whitespace-pre-wrap rounded-md bg-background p-3 text-sm leading-6 text-foreground">
-                          {item.answer}
-                        </p>
+                      <div className="border-t border-[#D9E1EC] bg-[#F8FAFD] p-5 text-sm leading-relaxed text-[#1C1917] animate-in fade-in-50">
+                        <p className="whitespace-pre-wrap">{item.answer}</p>
                       </div>
                     )}
-                  </li>
+                  </Card>
                 );
               })}
-            </ul>
-          )}
-        </div>
-      )}
-
-      {tab === "audit" && (
-        <div className="flex flex-col gap-3">
-          <p className="text-sm text-muted">
-            Aktivitas seluruh pengguna lintas unit (200 terbaru).
-          </p>
-          {logError && <p className="fade-in text-sm text-red-600 dark:text-red-400">{logError}</p>}
-          {logs === null && <p className="text-sm text-muted">Memuat...</p>}
-          {logs && (
-            <div className="overflow-x-auto rounded-xl border border-border">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-surface text-xs text-muted">
-                  <tr>
-                    <th className="px-3 py-2 font-medium">Waktu</th>
-                    <th className="px-3 py-2 font-medium">Pengguna</th>
-                    <th className="px-3 py-2 font-medium">Aksi</th>
-                    <th className="px-3 py-2 font-medium">Detail</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {logs.map((log) => (
-                    <tr key={log.id} className="border-t border-border">
-                      <td className="whitespace-nowrap px-3 py-2 text-muted">
-                        {new Date(log.created_at).toLocaleString("id-ID")}
-                      </td>
-                      <td className="px-3 py-2 text-foreground">{log.user_full_name}</td>
-                      <td className="px-3 py-2 text-foreground">
-                        {ACTION_LABEL[log.action] ?? log.action}
-                      </td>
-                      <td className="max-w-xs truncate px-3 py-2 text-muted">
-                        {log.detail ?? "-"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             </div>
           )}
-        </div>
-      )}
+        </TabsContent>
+
+        {/* Tab 3: Log Audit */}
+        <TabsContent value="audit" className="mt-4 flex flex-col gap-4">
+          <p className="text-sm text-[#64748B]">
+            Jejak aktivitas keamanan dan pengubahan sistem yang tersimpan permanen di basis data.
+          </p>
+          {logError && (
+            <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{logError}</span>
+            </div>
+          )}
+          {logs === null && <p className="text-sm text-[#64748B]">Memuat log audit...</p>}
+          {logs && logs.length === 0 && (
+            <p className="text-sm text-[#64748B]">Belum ada catatan log audit.</p>
+          )}
+          {logs && logs.length > 0 && (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Waktu</TableHead>
+                  <TableHead>Pengguna</TableHead>
+                  <TableHead>Aktivitas</TableHead>
+                  <TableHead>Target ID</TableHead>
+                  <TableHead>Detail</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {logs.map((log) => (
+                  <TableRow key={log.id}>
+                    <TableCell className="font-mono text-xs whitespace-nowrap text-[#64748B]">
+                      {new Date(log.created_at).toLocaleString("id-ID")}
+                    </TableCell>
+                    <TableCell className="font-semibold text-[#0B254B]">
+                      {log.user_full_name || log.user_email || "Sistem"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="font-mono text-xs text-[#123B72]">
+                        {log.action}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-[#64748B]">
+                      {log.target_id ? log.target_id.slice(0, 8) + "..." : "-"}
+                    </TableCell>
+                    <TableCell className="text-xs text-[#64748B]">
+                      {log.detail ?? "-"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

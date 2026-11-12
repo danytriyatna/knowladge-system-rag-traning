@@ -3,6 +3,10 @@
 import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -38,6 +42,7 @@ export default function LoginPage() {
 
       <div className="flex flex-1 items-center justify-center px-4 py-10">
         <div className="fresh-card grid w-full max-w-4xl overflow-hidden rounded-3xl md:grid-cols-12">
+          {/* Kolom Kiri: Branding & Profil JP-Insight */}
           <div className="flex flex-col justify-between bg-gradient-to-br from-[#0E3161] via-[#123B72] to-[#081A36] p-8 text-white md:col-span-5 sm:p-10">
             <div>
               <div className="flex items-center gap-3">
@@ -51,9 +56,9 @@ export default function LoginPage() {
                     priority
                   />
                 </div>
-                <span className="rounded-full border border-[#F2C94C]/45 bg-[#F2C94C]/15 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#FDE68A]">
+                <Badge variant="gold" className="text-[10px] uppercase tracking-wider">
                   Knowledge &amp; Riset
-                </span>
+                </Badge>
               </div>
               <p className="mt-5 text-xs font-bold uppercase tracking-widest text-blue-200/80">
                 Ekosistem Jurnal Permukiman
@@ -67,15 +72,15 @@ export default function LoginPage() {
               </p>
               <ul className="mt-4 space-y-1.5 text-xs text-blue-100/90">
                 <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#F2C94C]" aria-hidden="true" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#EAB308]" aria-hidden="true" />
                   <span>Referensi artikel terbit OJS</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#F2C94C]" aria-hidden="true" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#EAB308]" aria-hidden="true" />
                   <span>Penelusuran regulasi &amp; SNI PU</span>
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#F2C94C]" aria-hidden="true" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#EAB308]" aria-hidden="true" />
                   <span>Analisis celah riset ilmiah</span>
                 </li>
               </ul>
@@ -106,6 +111,7 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {/* Kolom Kanan: Form Masuk dengan Komponen Shadcn UI */}
           <div className="flex flex-col justify-center bg-white p-8 md:col-span-7 sm:p-10">
             <div className="mb-6 flex items-center justify-between gap-3">
               <div>
@@ -129,36 +135,43 @@ export default function LoginPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-stone-600">Email</label>
-                <input
+                <Input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="rounded-xl border border-[#D9E1EC] bg-[#F6F9FD] px-4 py-2.5 text-sm text-stone-900 outline-none transition-colors focus:border-[#123B72] focus:bg-white focus:ring-1 focus:ring-[#123B72]"
                   placeholder="nama@pu.go.id"
+                  className="h-11 rounded-xl"
                 />
               </div>
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-stone-600">Kata Sandi</label>
-                <input
+                <Input
                   type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="rounded-xl border border-[#D9E1EC] bg-[#F6F9FD] px-4 py-2.5 text-sm text-stone-900 outline-none transition-colors focus:border-[#123B72] focus:bg-white focus:ring-1 focus:ring-[#123B72]"
                   placeholder="••••••••"
+                  className="h-11 rounded-xl"
                 />
               </div>
-              {error && <p className="fade-in text-sm text-rose-600">{error}</p>}
-              <button
+              {error && <p className="text-sm font-medium text-rose-600 animate-in fade-in-50">{error}</p>}
+              <Button
                 type="submit"
                 disabled={loading}
-                className="press mt-2 w-full rounded-xl bg-gradient-to-r from-[#164687] to-[#0B254B] px-4 py-3 text-sm font-bold text-white shadow-sm transition-all hover:brightness-110 disabled:opacity-50"
+                className="mt-2 h-11 w-full rounded-xl text-sm font-bold shadow-sm"
               >
-                {loading ? "Memproses..." : "Masuk"}
-              </button>
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Memproses...
+                  </>
+                ) : (
+                  "Masuk"
+                )}
+              </Button>
             </form>
             <p className="mt-4 text-center text-xs text-stone-400">
               Belum punya akun? Hubungi admin sekretariat jurnal untuk dibuatkan akses.

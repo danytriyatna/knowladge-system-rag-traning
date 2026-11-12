@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { LogOut } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface AccountMenuUser {
   fullName: string;
@@ -36,9 +38,9 @@ export default function AccountMenu({
       <button
         onClick={() => setOpen((v) => !v)}
         aria-label="Menu akun"
-        className="press flex items-center gap-2 rounded-full border border-white/25 bg-black/20 py-1 pl-1 pr-3 text-sm text-white transition-colors hover:bg-black/30"
+        className="flex items-center gap-2 rounded-full border border-white/25 bg-black/20 py-1 pl-1 pr-3.5 text-sm text-white transition-colors hover:bg-black/35 cursor-pointer"
       >
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-xs font-bold text-[#0F2C59]">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-xs font-bold text-[#123B72] shadow-xs">
           {initial}
         </span>
         <span className="hidden max-w-[130px] truncate text-xs font-semibold text-white sm:inline">
@@ -47,29 +49,23 @@ export default function AccountMenu({
       </button>
 
       {open && (
-        <div className="popover-panel popover-panel-right absolute right-0 top-full z-30 mt-2 w-56 rounded-xl border border-[#D9E1EC] bg-white p-3 shadow-lg">
-          <div className="px-1 pb-2">
-            <div className="truncate text-sm font-semibold text-stone-900">{user.fullName}</div>
-            <div className="truncate text-xs text-stone-500">
-              {isAdmin ? "Admin" : "Pengguna Unit"}
-              {user.unit ? ` · ${user.unit}` : ""}
+        <div className="absolute right-0 top-full z-50 mt-2 w-60 rounded-2xl border border-[#D9E1EC] bg-white p-3 text-[#1C1917] shadow-xl animate-in fade-in-0 zoom-in-95">
+          <div className="px-2 py-1.5">
+            <div className="truncate text-sm font-bold text-[#0B254B]">{user.fullName}</div>
+            <div className="mt-1 flex items-center gap-1.5 text-xs text-[#64748B]">
+              <Badge variant={isAdmin ? "default" : "secondary"} className="text-[10px]">
+                {isAdmin ? "Admin" : "Pengguna"}
+              </Badge>
+              {user.unit && <span className="truncate">&bull; {user.unit}</span>}
             </div>
           </div>
-          <div className="border-t border-[#E6ECF5] pt-2">
+          <div className="mt-2 border-t border-[#D9E1EC] pt-2">
             <button
               onClick={onLogout}
-              className="press flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-stone-700 hover:bg-[#EEF4FC] hover:text-[#0F2C59]"
+              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-rose-600 transition-colors hover:bg-rose-50 cursor-pointer"
             >
-              <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4 shrink-0">
-                <path
-                  d="M8 3H4.5a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1H8M13 13.5 17 10l-4-3.5M7 10h10"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              Keluar
+              <LogOut className="h-4 w-4 shrink-0" />
+              <span>Keluar Sesi</span>
             </button>
           </div>
         </div>
