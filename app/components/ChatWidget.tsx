@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 
 const DISMISS_KEY = "jp_insight_chat_widget_dismissed";
 
@@ -55,21 +56,21 @@ export default function ChatWidget({ onOpen }: { onOpen: () => void }) {
       <button
         onClick={handleOpen}
         aria-label="Buka Chat & Kajian"
-        className={`press relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#164687] to-[#0B254B] text-white shadow-lg ring-2 ring-[#EAB308]/80 hover:brightness-110 ${
+        className={`press relative flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-xl ring-2 ring-[#EAB308]/90 hover:brightness-105 hover:scale-105 transition-all p-0.5 ${
           showCallout ? "widget-bounce" : ""
         }`}
       >
         {showCallout && (
-          <span className="notify-ping absolute inset-0 rounded-full bg-accent" />
+          <span className="notify-ping absolute inset-0 rounded-full bg-[#EAB308]/40" />
         )}
-        <svg viewBox="0 0 20 20" fill="none" className="relative h-6 w-6">
-          <path
-            d="M3 4.5A1.5 1.5 0 0 1 4.5 3h11A1.5 1.5 0 0 1 17 4.5v7A1.5 1.5 0 0 1 15.5 13H8l-3.5 3.5V13H4.5A1.5 1.5 0 0 1 3 11.5v-7Z"
-            stroke="currentColor"
-            strokeWidth="1.4"
-            strokeLinejoin="round"
-          />
-        </svg>
+        <Image
+          src="/jp-insight-logo.png?v=20261115_v2_gold_ring"
+          alt="Maskot JP Insight"
+          width={56}
+          height={56}
+          className="relative h-full w-full rounded-full object-contain"
+          priority
+        />
       </button>
     </div>
   );

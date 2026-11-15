@@ -13,8 +13,8 @@
 
   const SCRIPT_SRC = currentScript && currentScript.src ? currentScript.src : "";
   const LOGO_URL = SCRIPT_SRC
-    ? new URL("jp-insight-logo.png?v=20261111_cartoon", SCRIPT_SRC).href
-    : "/jp-insight-logo.png?v=20261111_cartoon";
+    ? new URL("jp-insight-logo.png?v=20261115_v2_gold_ring", SCRIPT_SRC).href
+    : "/jp-insight-logo.png?v=20261115_v2_gold_ring";
 
   // Injeksi CSS Khusus (Scattered & Scoped agar tidak tabrakan dengan CSS OJS / Bootstrap / Tailwind)
   const style = document.createElement("style");
