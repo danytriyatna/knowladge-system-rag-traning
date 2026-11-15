@@ -541,13 +541,13 @@ export default function Home() {
       <header className="sticky top-0 z-20 border-b-2 border-[#EAB308]/85 bg-gradient-to-r from-[#0B2347] via-[#123B72] to-[#081A36] shadow-sm">
         <div className="flex w-full items-center justify-between gap-4 px-4 py-2.5 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-xs">
+            <div className="flex h-9 items-center rounded-full bg-white px-3 py-1 shadow-sm ring-1 ring-black/10 shrink-0">
               <Image
-                src="/logo-pu.png"
-                alt="Logo PU"
-                width={28}
-                height={28}
-                className="rounded-sm object-contain"
+                src="/kemenpu_pill_clean.png"
+                alt="Kementerian Pekerjaan Umum"
+                width={136}
+                height={32}
+                className="h-7 w-auto object-contain"
                 priority
               />
             </div>
@@ -578,16 +578,6 @@ export default function Home() {
             >
               MQC Assistant ↗
             </a>
-            <div className="hidden h-9 items-center rounded-full bg-white px-3 py-1 shadow-sm ring-1 ring-black/10 sm:flex">
-              <Image
-                src="/kemenpu_pill_clean.png"
-                alt="Kementerian Pekerjaan Umum"
-                width={136}
-                height={32}
-                className="h-7 w-auto object-contain"
-                priority
-              />
-            </div>
             {currentUser && <AccountMenu user={currentUser} onLogout={handleLogout} />}
           </div>
         </div>
