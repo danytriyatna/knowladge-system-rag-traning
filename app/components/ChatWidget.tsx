@@ -70,6 +70,7 @@ export default function ChatWidget({ onOpen }: { onOpen: () => void }) {
           height={56}
           className="relative h-full w-full rounded-full object-contain"
           priority
+          unoptimized
         />
       </button>
     </div>
