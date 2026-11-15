@@ -226,8 +226,15 @@ export default function DocumentPage() {
       <header className="sticky top-0 z-20 border-b border-[#8C2806]/60 bg-gradient-to-r from-[#B93A0C] via-[#C13D0D] to-[#962D08] shadow-sm">
         <div className="mx-auto flex w-full max-w-[1520px] items-center justify-between gap-4 px-4 py-2.5 sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-3 rounded-lg transition-opacity hover:opacity-90">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-xs">
-              <Image src="/logo-pu.png" alt="Logo PU" width={28} height={28} className="rounded-sm object-contain" />
+            <div className="flex h-9 items-center rounded-full bg-white px-3 py-1 shadow-sm ring-1 ring-black/10 shrink-0">
+              <Image
+                src="/kemenpu_pill_clean.png"
+                alt="Kementerian Pekerjaan Umum"
+                width={136}
+                height={32}
+                className="h-7 w-auto object-contain"
+                priority
+              />
             </div>
             <div className="leading-tight">
               <p className="text-base font-extrabold tracking-tight text-white uppercase">JP-Insight</p>
@@ -236,15 +243,6 @@ export default function DocumentPage() {
           </Link>
 
           <div className="flex items-center gap-3">
-            <div className="hidden h-9 items-center rounded-full bg-white px-3 py-1 shadow-sm ring-1 ring-black/10 sm:flex">
-              <Image
-                src="/kemenpu_pill_clean.png"
-                alt="Kementerian Pekerjaan Umum"
-                width={136}
-                height={32}
-                className="h-7 w-auto object-contain"
-              />
-            </div>
           </div>
         </div>
       </header>
