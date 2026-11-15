@@ -882,11 +882,11 @@ export default function Home() {
                             className="fresh-card group flex items-center justify-between gap-4 rounded-2xl px-5 py-4 text-sm transition-all duration-150 hover:border-[#C7D8EE] hover:bg-[#F8FAFD]"
                           >
                             <div className="flex min-w-0 flex-col gap-1.5">
-                              <span className="truncate font-bold text-stone-900 transition-colors group-hover:text-[#0B254B]">
+                              <span className="font-serif text-[15px] sm:text-[16px] font-bold leading-[1.35] text-stone-900 transition-colors group-hover:text-[#0B254B] line-clamp-2">
                                 {doc.title || doc.filename}
                               </span>
                               {authors.length > 0 && (
-                                <span className="truncate text-xs text-stone-600">
+                                <span className="text-xs leading-[1.45] text-stone-600 line-clamp-1">
                                   {authors.join(", ")}
                                   {doc.published_year ? ` · ${doc.published_year}` : ""}
                                 </span>

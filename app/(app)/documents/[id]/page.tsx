@@ -263,7 +263,7 @@ export default function DocumentPage() {
           <>
             <div className="fresh-card flex flex-wrap items-start justify-between gap-4 rounded-2xl border-t-[3px] border-t-[#C13D0D] p-5">
               <div className="min-w-0">
-                <h1 className="text-xl font-bold tracking-tight text-stone-900">
+                <h1 className="font-serif text-xl sm:text-2xl font-bold leading-[1.35] tracking-tight text-stone-900">
                   {document.title || document.filename}
                 </h1>
                 {authors.length > 0 && (
