@@ -646,7 +646,7 @@ export default function Home() {
             </div>
           </div>
 
-          <main className="mx-auto flex w-full max-w-[1480px] min-w-0 flex-1 flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+          <main className="flex w-full min-w-0 flex-1 flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
             <h1 className="text-lg font-bold tracking-tight md:hidden">{activeNavLabel}</h1>
 
             {pageTab === "regulations" && (
@@ -660,12 +660,12 @@ export default function Home() {
               </div>
             )}
             {pageTab === "skills" && isAdmin && (
-              <div className="mx-auto w-full max-w-5xl">
+              <div className="w-full">
                 <SkillsPanel />
               </div>
             )}
             {pageTab === "sync" && isAdmin && (
-              <div className="mx-auto w-full max-w-5xl">
+              <div className="w-full">
                 <SyncPanel onSynced={loadDocuments} />
               </div>
             )}
@@ -948,7 +948,7 @@ export default function Home() {
             )}
 
           {pageTab === "chat" && (
-            <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 md:flex-row">
+            <div className="flex w-full flex-1 flex-col gap-4 md:flex-row">
               <div className="flex shrink-0 flex-col gap-2 md:w-56">
                 <div className="flex items-center justify-between">
                   <h2 className="text-sm font-medium text-muted">Riwayat</h2>
@@ -1295,7 +1295,7 @@ export default function Home() {
           </main>
 
           <footer className="mt-auto border-t border-[#D9E1EC] bg-white/80 backdrop-blur-xs">
-            <div className="mx-auto flex w-full max-w-[1480px] flex-col items-start justify-between gap-2 px-4 py-3 text-xs text-stone-500 sm:flex-row sm:items-center sm:px-6 lg:px-8">
+            <div className="flex w-full flex-col items-start justify-between gap-2 px-4 py-3 text-xs text-stone-500 sm:flex-row sm:items-center sm:px-6 lg:px-8">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-[#123B72]" aria-hidden="true" />
                 <span>
