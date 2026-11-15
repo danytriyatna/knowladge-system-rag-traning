@@ -562,22 +562,6 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-2.5 sm:gap-3">
-            <a
-              href="http://localhost/jurnalpermukiman/index.php/JP"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden items-center gap-1.5 rounded-lg border border-white/25 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:bg-white/20 md:inline-flex"
-            >
-              Portal OJS ↗
-            </a>
-            <a
-              href="http://localhost:3000/dashboard"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden items-center gap-1.5 rounded-lg border border-white/25 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:bg-white/20 md:inline-flex"
-            >
-              MQC Assistant ↗
-            </a>
             <div className="hidden h-9 items-center rounded-full bg-white px-3 py-1 shadow-sm ring-1 ring-black/10 sm:flex">
               <Image
                 src="/kemenpu_pill_clean.png"
