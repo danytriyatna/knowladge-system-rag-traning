@@ -3,6 +3,8 @@
 import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -12,25 +14,33 @@ export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(formEvent: React.FormEvent<HTMLFormElement>) {
     formEvent.preventDefault();
     setLoading(true);
-    setError(null);
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !password) {
+      toast.error("Email dan kata sandi wajib diisi");
+      setLoading(false);
+      return;
+    }
+
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+      const result = await signIn("credentials", {
+        email: trimmedEmail,
+        password,
+        redirect: false,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Gagal masuk");
+      if (!result || result.error || !result.ok) {
+        toast.error("Email atau kata sandi salah");
+        return;
+      }
+      toast.success("Berhasil masuk. Mengalihkan ke beranda JP-Insight...");
       router.push("/");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal masuk");
+      toast.error(err instanceof Error ? err.message : "Gagal masuk");
     } finally {
       setLoading(false);
     }
@@ -134,7 +144,7 @@ export default function LoginPage() {
               />
             </div>
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-3.5" noValidate>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-stone-600">Email</label>
                 <Input
@@ -157,7 +167,6 @@ export default function LoginPage() {
                   className="h-11 rounded-xl"
                 />
               </div>
-              {error && <p className="text-sm font-medium text-rose-600 animate-in fade-in-50">{error}</p>}
               <Button
                 type="submit"
                 disabled={loading}

@@ -11,6 +11,11 @@ export default defineConfig({
     environment: "node",
     include: ["tests/**/*.test.ts"],
     setupFiles: ["tests/setup.ts"],
+    server: {
+      deps: {
+        inline: ["next-auth"],
+      },
+    },
     // Dinaikkan setelah migrasi ke Supabase: tiap query kini round-trip
     // jaringan (bukan file lokal), jadi tes yang memanggil Gemini + banyak
     // query berturut-turut butuh jendela waktu lebih longgar dari sebelumnya.

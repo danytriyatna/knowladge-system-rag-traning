@@ -105,7 +105,7 @@ export default function DocumentDetailPage() {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    fetch("/api/auth/me")
+    fetch("/api/auth/session")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.user?.role === "admin") setIsAdmin(true);

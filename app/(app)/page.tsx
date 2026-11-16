@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import SkillsPanel from "@/app/components/SkillsPanel";
 import SyncPanel from "@/app/components/SyncPanel";
@@ -217,10 +218,25 @@ export default function Home() {
 
   useEffect(() => {
     let ignore = false;
-    fetch("/api/auth/me")
-      .then((res) => res.json())
+    fetch("/api/auth/session")
+      .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (!ignore) setCurrentUser(data.user ?? null);
+        if (ignore) return;
+        const sessionUser = data?.user;
+        if (!sessionUser) {
+          setCurrentUser(null);
+          return;
+        }
+        setCurrentUser({
+          id: sessionUser.id,
+          email: sessionUser.email ?? "",
+          fullName: sessionUser.fullName ?? sessionUser.name ?? "",
+          role: sessionUser.role,
+          unit: sessionUser.unit ?? null,
+        });
+      })
+      .catch(() => {
+        if (!ignore) setCurrentUser(null);
       });
     return () => {
       ignore = true;
@@ -231,7 +247,7 @@ export default function Home() {
   const visibleNavItems = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
 
   async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await signOut({ redirect: false });
     router.push("/login");
     router.refresh();
   }
