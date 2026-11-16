@@ -13,6 +13,7 @@ import GapPanel from "@/app/components/GapPanel";
 import ChatPanel from "@/app/components/ChatPanel";
 import ChatWidget from "@/app/components/ChatWidget";
 import AccountMenu from "@/app/components/AccountMenu";
+import { usePublicPortalUrls } from "@/lib/public-config";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -190,6 +191,7 @@ const NAV_ITEMS: NavItem[] = [
 
 export default function Home() {
   const router = useRouter();
+  const { ojsPublicUrl, mqcPublicUrl } = usePublicPortalUrls();
   const [pageTab, setPageTab] = useState<PageTab>("documents");
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
@@ -926,7 +928,7 @@ export default function Home() {
               </div>
               <div className="flex items-center gap-4">
                 <a
-                  href="http://localhost/jurnalpermukiman/index.php/JP"
+                  href={ojsPublicUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="font-medium text-[#0B254B] transition-colors hover:underline"
@@ -934,7 +936,7 @@ export default function Home() {
                   Portal OJS ↗
                 </a>
                 <a
-                  href="http://localhost:3000/dashboard"
+                  href={mqcPublicUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="font-medium text-stone-600 transition-colors hover:text-[#0B254B]"

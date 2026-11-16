@@ -9,9 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
+import { usePublicPortalUrls } from "@/lib/public-config";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { ojsPublicUrl, mqcPublicUrl } = usePublicPortalUrls();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -102,7 +104,7 @@ export default function LoginPage() {
               </p>
               <div className="mt-2 flex flex-wrap gap-3">
                 <a
-                  href="http://localhost/jurnalpermukiman/index.php/JP"
+                  href={ojsPublicUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="font-semibold text-white underline decoration-white/40 underline-offset-4 hover:decoration-white"
@@ -110,7 +112,7 @@ export default function LoginPage() {
                   Portal OJS ↗
                 </a>
                 <a
-                  href="http://localhost:3000/dashboard"
+                  href={mqcPublicUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="font-semibold text-white underline decoration-white/40 underline-offset-4 hover:decoration-white"
