@@ -253,9 +253,16 @@ export default function DocumentDetailPage() {
       {/* Top Header */}
       <header className="sticky top-0 z-20 border-b-2 border-[#EAB308]/85 bg-gradient-to-r from-[#0B2347] via-[#123B72] to-[#081A36] shadow-sm">
         <div className="flex w-full items-center justify-between gap-4 px-4 py-2.5 sm:px-6 lg:px-8">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-xs">
-              <Image src="/logo-pu.png" alt="Logo PU" width={28} height={28} className="rounded-sm object-contain" />
+          <Link href="/" className="flex items-center gap-3 rounded-lg transition-opacity hover:opacity-90">
+            <div className="flex h-9 items-center rounded-full bg-white px-3 py-1 shadow-sm ring-1 ring-black/10 shrink-0">
+              <Image
+                src="/kemenpu_pill_clean.png"
+                alt="Kementerian Pekerjaan Umum"
+                width={136}
+                height={32}
+                className="h-7 w-auto object-contain"
+                priority
+              />
             </div>
             <div className="leading-tight">
               <p className="text-base font-extrabold tracking-tight text-white uppercase">JP-Insight</p>
@@ -264,23 +271,6 @@ export default function DocumentDetailPage() {
           </Link>
 
           <div className="flex items-center gap-3">
-            <a
-              href="http://localhost/jurnalpermukiman/index.php/JP"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden items-center gap-1.5 rounded-lg border border-white/25 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/20 md:inline-flex"
-            >
-              Portal OJS ↗
-            </a>
-            <div className="hidden h-9 items-center rounded-full bg-white px-3 py-1 shadow-sm ring-1 ring-black/10 sm:flex">
-              <Image
-                src="/kemenpu_pill_clean.png"
-                alt="Kementerian PU"
-                width={136}
-                height={32}
-                className="h-7 w-auto object-contain"
-              />
-            </div>
           </div>
         </div>
       </header>
@@ -307,7 +297,7 @@ export default function DocumentDetailPage() {
             <Card className="border-t-4 border-t-[#123B72]">
               <CardContent className="flex flex-wrap items-start justify-between gap-6 p-6">
                 <div className="min-w-0 max-w-3xl">
-                  <h1 className="text-2xl font-extrabold tracking-tight text-[#0B254B]">
+                  <h1 className="font-serif text-xl sm:text-2xl font-bold leading-[1.35] tracking-tight text-[#0B254B]">
                     {document.title || document.filename}
                   </h1>
                   {authors.length > 0 && (

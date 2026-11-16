@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MessageSquare, X } from "lucide-react";
+import Image from "next/image";
+import { X } from "lucide-react";
 
 const DISMISS_KEY = "jp_insight_chat_widget_dismissed";
 
@@ -55,14 +56,22 @@ export default function ChatWidget({ onOpen }: { onOpen: () => void }) {
       <button
         onClick={handleOpen}
         aria-label="Buka Chat & Kajian"
-        className={`group relative flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#123B72] via-[#0E3161] to-[#081A36] text-white shadow-xl ring-2 ring-[#EAB308]/90 transition-transform hover:scale-105 active:scale-95 cursor-pointer ${
-          showCallout ? "animate-bounce" : ""
+        className={`press relative flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-xl ring-2 ring-[#EAB308]/90 hover:brightness-105 hover:scale-105 transition-all p-0.5 cursor-pointer ${
+          showCallout ? "widget-bounce" : ""
         }`}
       >
         {showCallout && (
-          <span className="absolute inset-0 rounded-full bg-[#123B72] opacity-75 animate-ping" />
+          <span className="notify-ping absolute inset-0 rounded-full bg-[#EAB308]/40" />
         )}
-        <MessageSquare className="relative h-6 w-6 transition-transform group-hover:scale-110" />
+        <Image
+          src="/jp-insight-logo.png?v=20261115_v2_gold_ring"
+          alt="Maskot JP Insight"
+          width={56}
+          height={56}
+          className="relative h-full w-full rounded-full object-contain"
+          priority
+          unoptimized
+        />
       </button>
     </div>
   );

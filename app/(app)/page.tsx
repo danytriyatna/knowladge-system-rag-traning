@@ -432,13 +432,13 @@ export default function Home() {
       <header className="sticky top-0 z-20 border-b-2 border-[#EAB308]/85 bg-gradient-to-r from-[#0B2347] via-[#123B72] to-[#081A36] shadow-sm">
         <div className="flex w-full items-center justify-between gap-4 px-4 py-2.5 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white p-1 shadow-xs">
+            <div className="flex h-9 items-center rounded-full bg-white px-3 py-1 shadow-sm ring-1 ring-black/10 shrink-0">
               <Image
-                src="/logo-pu.png"
-                alt="Logo PU"
-                width={28}
-                height={28}
-                className="rounded-sm object-contain"
+                src="/kemenpu_pill_clean.png"
+                alt="Kementerian Pekerjaan Umum"
+                width={136}
+                height={32}
+                className="h-7 w-auto object-contain"
                 priority
               />
             </div>
@@ -453,44 +453,6 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-2.5 sm:gap-3">
-            <Button
-              asChild
-              variant="outline"
-              size="sm"
-              className="hidden items-center gap-1.5 border-white/25 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:bg-white/20 hover:text-white md:inline-flex"
-            >
-              <a
-                href="http://localhost/jurnalpermukiman/index.php/JP"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Portal OJS <ExternalLink className="h-3 w-3 ml-0.5" />
-              </a>
-            </Button>
-            <Button
-              asChild
-              variant="outline"
-              size="sm"
-              className="hidden items-center gap-1.5 border-white/25 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:bg-white/20 hover:text-white md:inline-flex"
-            >
-              <a
-                href="http://localhost:3000/dashboard"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                MQC Assistant <ExternalLink className="h-3 w-3 ml-0.5" />
-              </a>
-            </Button>
-            <div className="hidden h-9 items-center rounded-full bg-white px-3 py-1 shadow-sm ring-1 ring-black/10 sm:flex">
-              <Image
-                src="/kemenpu_pill_clean.png"
-                alt="Kementerian Pekerjaan Umum"
-                width={136}
-                height={32}
-                className="h-7 w-auto object-contain"
-                priority
-              />
-            </div>
             {currentUser && <AccountMenu user={currentUser} onLogout={handleLogout} />}
           </div>
         </div>
@@ -549,7 +511,7 @@ export default function Home() {
             </div>
           </div>
 
-          <main className="mx-auto flex w-full max-w-[1480px] min-w-0 flex-1 flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
+          <main className="flex w-full min-w-0 flex-1 flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
             <h1 className="text-lg font-bold tracking-tight md:hidden">{activeNavLabel}</h1>
 
             {pageTab === "regulations" && (
@@ -563,12 +525,12 @@ export default function Home() {
               </div>
             )}
             {pageTab === "skills" && isAdmin && (
-              <div className="mx-auto w-full max-w-5xl">
+              <div className="w-full">
                 <SkillsPanel />
               </div>
             )}
             {pageTab === "sync" && isAdmin && (
-              <div className="mx-auto w-full max-w-5xl">
+              <div className="w-full">
                 <SyncPanel onSynced={loadDocuments} />
               </div>
             )}
@@ -846,11 +808,11 @@ export default function Home() {
                           <li key={doc.id}>
                             <Card className="group flex items-center justify-between gap-4 rounded-2xl p-4 text-sm transition-all duration-150 hover:border-[#C7D8EE] hover:bg-[#F8FAFD] shadow-xs">
                               <div className="flex min-w-0 flex-col gap-1.5">
-                                <span className="truncate font-bold text-stone-900 transition-colors group-hover:text-[#0B254B]">
+                                <span className="font-serif text-[15px] sm:text-[16px] font-bold leading-[1.35] text-stone-900 transition-colors group-hover:text-[#0B254B] line-clamp-2">
                                   {doc.title || doc.filename}
                                 </span>
                                 {authors.length > 0 && (
-                                  <span className="truncate text-xs text-stone-600">
+                                  <span className="text-xs leading-[1.45] text-stone-600 line-clamp-1">
                                     {authors.join(", ")}
                                     {doc.published_year ? ` · ${doc.published_year}` : ""}
                                   </span>
@@ -954,7 +916,7 @@ export default function Home() {
           </main>
 
           <footer className="mt-auto border-t border-[#D9E1EC] bg-white/80 backdrop-blur-xs">
-            <div className="mx-auto flex w-full max-w-[1480px] flex-col items-start justify-between gap-2 px-4 py-3 text-xs text-stone-500 sm:flex-row sm:items-center sm:px-6 lg:px-8">
+            <div className="flex w-full flex-col items-start justify-between gap-2 px-4 py-3 text-xs text-stone-500 sm:flex-row sm:items-center sm:px-6 lg:px-8">
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-[#123B72]" aria-hidden="true" />
                 <span>

@@ -28,6 +28,7 @@
   --color-accent-soft: var(--accent-soft);
   --color-accent-text: var(--accent-text);
   --font-sans: var(--font-plus-jakarta), "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-serif: var(--font-lora), "Lora", Georgia, serif;
   --font-mono: var(--font-jetbrains-mono), "JetBrains Mono", monospace;
 }
 
@@ -35,6 +36,11 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+  line-height: 1.6;
+}
+
+.font-serif {
+  font-family: var(--font-lora), "Lora", Georgia, serif !important;
 }
 
 @layer components {
