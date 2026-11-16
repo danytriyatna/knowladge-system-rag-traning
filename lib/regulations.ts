@@ -185,9 +185,7 @@ export async function replaceRegulationMentions(
     await tx`DELETE FROM regulation_mentions WHERE document_id = ${documentId}`;
     if (rows.length > 0) {
       await tx`
-        INSERT INTO regulation_mentions
-          (id, chunk_id, document_id, jenis, nomor_normal, nomor_lengkap, tahun, teks_asli, created_at)
-        VALUES ${tx(rows, "id", "chunk_id", "document_id", "jenis", "nomor_normal", "nomor_lengkap", "tahun", "teks_asli", "created_at")}
+        INSERT INTO regulation_mentions ${tx(rows, "id", "chunk_id", "document_id", "jenis", "nomor_normal", "nomor_lengkap", "tahun", "teks_asli", "created_at")}
       `;
     }
   });

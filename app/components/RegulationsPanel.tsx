@@ -83,6 +83,16 @@ function badgeClass(jenis: string) {
   return JENIS_CLASS[jenis] ?? JENIS_CLASS.SE;
 }
 
+type ApiErrorShape = { error?: string };
+
+async function readJsonSafe<T>(res: Response): Promise<(T & ApiErrorShape) | null> {
+  try {
+    return (await res.json()) as T & ApiErrorShape;
+  } catch {
+    return null;
+  }
+}
+
 export default function RegulationsPanel({ isAdmin }: { isAdmin: boolean }) {
   const [regulations, setRegulations] = useState<RegulationSummary[] | null>(null);
   const [outdated, setOutdated] = useState<OutdatedEdition[] | null>(null);
@@ -104,11 +114,22 @@ export default function RegulationsPanel({ isAdmin }: { isAdmin: boolean }) {
 
   async function loadList() {
     try {
-      const res = await fetch("/api/regulations");
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Gagal memuat regulasi");
-      setRegulations(data.regulations ?? []);
-      setOutdated(data.outdated ?? []);
+      const [listRes, outdatedRes] = await Promise.all([
+        fetch("/api/regulations"),
+        fetch("/api/regulations?view=outdated"),
+      ]);
+      const [listData, outdatedData] = await Promise.all([
+        readJsonSafe<{ regulations?: RegulationSummary[] }>(listRes),
+        readJsonSafe<{ outdated?: OutdatedEdition[] }>(outdatedRes),
+      ]);
+      if (!listRes.ok) {
+        throw new Error(listData?.error ?? `Gagal memuat regulasi (HTTP ${listRes.status})`);
+      }
+      if (!outdatedRes.ok) {
+        throw new Error(outdatedData?.error ?? `Gagal memuat edisi lama (HTTP ${outdatedRes.status})`);
+      }
+      setRegulations(listData?.regulations ?? []);
+      setOutdated(outdatedData?.outdated ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal memuat regulasi");
     }
@@ -116,16 +137,32 @@ export default function RegulationsPanel({ isAdmin }: { isAdmin: boolean }) {
 
   useEffect(() => {
     let ignore = false;
-    fetch("/api/regulations")
-      .then((res) => res.json())
-      .then((data) => {
+    Promise.all([
+      fetch("/api/regulations").then(async (res) => ({
+        ok: res.ok,
+        status: res.status,
+        data: await readJsonSafe<{ regulations?: RegulationSummary[] }>(res),
+      })),
+      fetch("/api/regulations?view=outdated").then(async (res) => ({
+        ok: res.ok,
+        status: res.status,
+        data: await readJsonSafe<{ outdated?: OutdatedEdition[] }>(res),
+      })),
+    ])
+      .then(([listRes, outdatedRes]) => {
         if (!ignore) {
-          setRegulations(data.regulations ?? []);
-          setOutdated(data.outdated ?? []);
+          if (!listRes.ok) {
+            throw new Error(listRes.data?.error ?? `Gagal memuat regulasi (HTTP ${listRes.status})`);
+          }
+          if (!outdatedRes.ok) {
+            throw new Error(outdatedRes.data?.error ?? `Gagal memuat edisi lama (HTTP ${outdatedRes.status})`);
+          }
+          setRegulations(listRes.data?.regulations ?? []);
+          setOutdated(outdatedRes.data?.outdated ?? []);
         }
       })
-      .catch(() => {
-        if (!ignore) setError("Gagal memuat regulasi");
+      .catch((err) => {
+        if (!ignore) setError(err instanceof Error ? err.message : "Gagal memuat regulasi");
       });
     return () => {
       ignore = true;
@@ -136,14 +173,19 @@ export default function RegulationsPanel({ isAdmin }: { isAdmin: boolean }) {
     setSelectedNomor(nomorLengkap);
     setDetailLoading(true);
     setDetail(null);
+    setError(null);
     setLinkError(null);
     try {
       const res = await fetch(`/api/regulations?nomor=${encodeURIComponent(nomorLengkap)}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Gagal memuat rincian regulasi");
-      setDetail(data);
-      setLinkUrl(data.link?.url ?? "");
-      setLinkTitle(data.link?.judul_resmi ?? "");
+      const data = await readJsonSafe<{ detail?: RegulationDetail }>(res);
+      if (!res.ok) {
+        throw new Error(data?.error ?? `Gagal memuat rincian regulasi (HTTP ${res.status})`);
+      }
+      const d = data?.detail;
+      if (!d) throw new Error("Data rincian regulasi tidak ditemukan");
+      setDetail(d);
+      setLinkUrl(d.link?.url ?? "");
+      setLinkTitle(d.link?.judul_resmi ?? "");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal memuat rincian regulasi");
     } finally {
@@ -154,24 +196,26 @@ export default function RegulationsPanel({ isAdmin }: { isAdmin: boolean }) {
   function closeDetail() {
     setSelectedNomor(null);
     setDetail(null);
+    setError(null);
   }
 
   async function saveLink(nomorLengkap: string, remove = false) {
     setSavingLink(true);
     setLinkError(null);
     try {
-      const method = remove ? "DELETE" : "PUT";
       const res = await fetch("/api/regulations", {
-        method,
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          nomor_lengkap: nomorLengkap,
-          url: linkUrl,
-          judul_resmi: linkTitle,
+          nomor: nomorLengkap,
+          url: remove ? "" : linkUrl,
+          judul_resmi: remove ? "" : linkTitle,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Gagal menyimpan tautan");
+      const data = await readJsonSafe<Record<string, unknown>>(res);
+      if (!res.ok) {
+        throw new Error(data?.error ?? `Gagal menyimpan tautan (HTTP ${res.status})`);
+      }
       await openDetail(nomorLengkap);
     } catch (err) {
       setLinkError(err instanceof Error ? err.message : "Gagal menyimpan tautan");
@@ -185,8 +229,10 @@ export default function RegulationsPanel({ isAdmin }: { isAdmin: boolean }) {
     setError(null);
     try {
       const res = await fetch("/api/regulations", { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Panen regulasi gagal");
+      const data = await readJsonSafe<{ documents?: number; mentions?: number }>(res);
+      if (!res.ok) {
+        throw new Error(data?.error ?? `Panen regulasi gagal (HTTP ${res.status})`);
+      }
       await loadList();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Panen regulasi gagal");
@@ -234,6 +280,13 @@ export default function RegulationsPanel({ isAdmin }: { isAdmin: boolean }) {
         </div>
 
         {detailLoading && <p className="text-sm text-[#64748B]">Memuat data rincian regulasi...</p>}
+
+        {error && (
+          <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
 
         {detail && (
           <div className="flex flex-col gap-6">
