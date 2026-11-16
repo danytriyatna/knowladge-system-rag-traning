@@ -9,7 +9,11 @@ import {
   type RetrievedChunk,
   type SearchFilters,
 } from "@/lib/rag";
-import { answerFromContext, synthesizeKajian } from "@/lib/chat";
+import {
+  answerFromContext,
+  synthesizeKajian,
+  logAndDescribeGeminiError,
+} from "@/lib/chat";
 import { evidenceStrengthFor, combineWeakestLink } from "@/lib/evidence";
 import { NO_SOURCE_ANSWER, validSourceNumbers } from "@/lib/citation";
 import { searchPublishedOjsCorpus, type PublishedSourceCitation } from "@/lib/publishedLocal";
@@ -161,11 +165,11 @@ export async function POST(request: Request) {
     try {
       kajian = await synthesizeKajian(question, chunks);
     } catch (err) {
-      const message =
-        err instanceof Error && err.message.includes("GEMINI_API_KEY")
-          ? "GEMINI_API_KEY belum diset di server, tambahkan di .env.local"
-          : "Gagal menyusun kajian dari Gemini";
-      return NextResponse.json({ error: message }, { status: 502 });
+      const { message, status } = logAndDescribeGeminiError(
+        "POST /api/chat (kajian)",
+        err,
+      );
+      return NextResponse.json({ error: message }, { status });
     }
 
     // Buang poin yang tidak punya sitasi valid sama sekali — indikasi klaim
@@ -241,11 +245,11 @@ export async function POST(request: Request) {
     answer = result.answer;
     usedSourceNumbers = result.usedSourceNumbers;
   } catch (err) {
-    const message =
-      err instanceof Error && err.message.includes("GEMINI_API_KEY")
-        ? "GEMINI_API_KEY belum diset di server, tambahkan di .env.local"
-        : "Gagal mendapatkan jawaban dari Gemini";
-    return NextResponse.json({ error: message }, { status: 502 });
+    const { message, status } = logAndDescribeGeminiError(
+      "POST /api/chat (chat)",
+      err,
+    );
+    return NextResponse.json({ error: message }, { status });
   }
 
   // Hanya tampilkan sumber yang benar-benar dipakai Gemini untuk menjawab —

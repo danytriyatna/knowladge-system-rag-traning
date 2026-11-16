@@ -1,8 +1,133 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { ApiError, GoogleGenAI, Type } from "@google/genai";
 import type { RetrievedChunk } from "./rag";
 import { listEnabledSkills } from "./skills";
 
 const MODEL = process.env.GEMINI_CHAT_MODEL ?? "gemini-3.1-flash-lite";
+
+export interface GeminiErrorInfo {
+  status: number;
+  message: string;
+  kind: "overloaded" | "rate_limit" | "network" | "invalid_output" | "internal";
+}
+
+function redactSecrets(text: string): string {
+  return text
+    .replace(/([?&]key=)[^&\s"']+/gi, "$1[REDACTED]")
+    .replace(/(Bearer\s+)\S+/gi, "$1[REDACTED]")
+    .replace(/\bAIza[0-9A-Za-z_-]{20,}/g, "[REDACTED_KEY]");
+}
+
+function getProviderStatus(err: unknown): number | undefined {
+  if (err instanceof ApiError) return err.status;
+  if (typeof err === "object" && err !== null) {
+    const status = (err as Record<string, unknown>).status;
+    if (typeof status === "number") return status;
+  }
+  return undefined;
+}
+
+/**
+ * Terjemahkan error pemanggilan Gemini menjadi status HTTP dan pesan yang aman
+ * untuk pengguna, tanpa membocorkan detail internal (API key / file env).
+ */
+export function describeGeminiError(err: unknown): GeminiErrorInfo {
+  const errObj = typeof err === "object" && err !== null ? (err as Record<string, unknown>) : null;
+  const providerStatus = getProviderStatus(err);
+  const rawMessage = err instanceof Error ? err.message : String(err ?? "");
+  const causeObj =
+    errObj?.cause && typeof errObj.cause === "object"
+      ? (errObj.cause as Record<string, unknown>)
+      : null;
+  const errCode =
+    typeof errObj?.code === "string"
+      ? errObj.code
+      : typeof causeObj?.code === "string"
+        ? causeObj.code
+        : "";
+
+  if (
+    rawMessage.includes("GEMINI_API_KEY") ||
+    providerStatus === 400 ||
+    providerStatus === 401 ||
+    providerStatus === 403 ||
+    providerStatus === 404
+  ) {
+    return {
+      status: 502,
+      kind: "internal",
+      message:
+        "Layanan AI sedang mengalami kendala teknis sementara. Silakan coba kembali nanti atau hubungi pengelola.",
+    };
+  }
+
+  if (providerStatus === 503 || /\bUNAVAILABLE\b|high demand|overloaded/i.test(rawMessage)) {
+    return {
+      status: 503,
+      kind: "overloaded",
+      message:
+        "Layanan AI sedang mengalami kepadatan permintaan sementara. Silakan coba kirim ulang beberapa saat lagi.",
+    };
+  }
+
+  if (
+    providerStatus === 429 ||
+    /\bRESOURCE_EXHAUSTED\b|rate.?limit|quota/i.test(rawMessage)
+  ) {
+    return {
+      status: 429,
+      kind: "rate_limit",
+      message:
+        "Batas kuota atau frekuensi permintaan ke layanan AI telah tercapai. Mohon tunggu sebentar sebelum mencoba kembali.",
+    };
+  }
+
+  if (
+    (err instanceof Error && err.name === "AbortError") ||
+    providerStatus === 408 ||
+    providerStatus === 504 ||
+    /\b(ETIMEDOUT|ECONNRESET|ECONNREFUSED|ENOTFOUND|UND_ERR_CONNECT_TIMEOUT)\b|fetch failed|timed?\s*out/i.test(
+      `${errCode} ${rawMessage}`
+    )
+  ) {
+    return {
+      status: 504,
+      kind: "network",
+      message:
+        "Koneksi ke layanan AI terputus atau melebihi batas waktu. Silakan coba kembali.",
+    };
+  }
+
+  if (
+    rawMessage.includes("Gemini tidak mengembalikan jawaban") ||
+    rawMessage.includes("format jawaban yang tidak valid")
+  ) {
+    return {
+      status: 502,
+      kind: "invalid_output",
+      message:
+        "Layanan AI tidak memberikan respons yang sesuai. Silakan ulangi atau perjelas pertanyaan Anda.",
+    };
+  }
+
+  return {
+    status: 502,
+    kind: "internal",
+    message:
+      "Layanan AI sedang mengalami kendala teknis sementara. Silakan coba kembali nanti atau hubungi pengelola.",
+  };
+}
+
+/** Catat detail lengkap error di log server dan kembalikan pesan aman untuk UI. */
+export function logAndDescribeGeminiError(context: string, err: unknown): GeminiErrorInfo {
+  const info = describeGeminiError(err);
+  const providerStatus = getProviderStatus(err);
+  const rawMessage = err instanceof Error ? err.message : String(err ?? "");
+  console.error(
+    `[${context}] Gemini gagal (kind=${info.kind}, model=${MODEL}, providerStatus=${providerStatus ?? "unknown"}):`,
+    redactSecrets(rawMessage)
+  );
+  return info;
+}
 
 async function buildPrompt(question: string, chunks: RetrievedChunk[]): Promise<string> {
   const context = chunks

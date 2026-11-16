@@ -228,8 +228,13 @@ export default function ChatPanel({
           },
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Gagal mendapatkan jawaban");
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(data?.error ?? `Gagal memperoleh jawaban (HTTP ${res.status})`);
+      }
+      if (!data) {
+        throw new Error(`Respons server tidak valid (HTTP ${res.status})`);
+      }
       setChatMessages((prev) => [
         ...prev,
         {
@@ -255,6 +260,7 @@ export default function ChatPanel({
       ]);
     } catch (err) {
       setChatError(err instanceof Error ? err.message : "Gagal mendapatkan jawaban");
+      setChatInput((prev) => (prev.trim() ? prev : question));
     } finally {
       setChatLoading(false);
     }
