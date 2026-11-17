@@ -130,7 +130,7 @@ export async function getCurrentUser(): Promise<UserRecord | null> {
       password_hash: "",
       full_name: "Dany Triyatna",
       role: "admin",
-      unit: "Direktorat Bina Teknik Permukiman dan Perumahan",
+      unit: "Direktorat Bina Teknik Bangunan Gedung dan Penyehatan Lingkungan",
       created_at: "2026-11-04T00:00:00.000Z",
     };
   }

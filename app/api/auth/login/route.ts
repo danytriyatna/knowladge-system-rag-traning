@@ -45,7 +45,7 @@ export async function POST(request: Request) {
       email: "dany@puskim.pu.go.id",
       fullName: "Dany Triyatna",
       role: "admin",
-      unit: "Direktorat Bina Teknik Permukiman dan Perumahan",
+      unit: "Direktorat Bina Teknik Bangunan Gedung dan Penyehatan Lingkungan",
     });
   }
 

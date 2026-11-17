@@ -83,7 +83,7 @@ export default function LoginPage() {
 
             <div className="mt-8 border-t border-white/20 pt-4 text-xs text-white/80">
               <p className="font-semibold text-white">
-                Direktorat Bina Teknik Permukiman dan Perumahan
+                Direktorat Bina Teknik Bangunan Gedung dan Penyehatan Lingkungan
               </p>
               <div className="mt-2 flex flex-wrap gap-3">
                 <a
