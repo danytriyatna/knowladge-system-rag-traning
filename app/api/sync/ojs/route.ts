@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { runHarvest, HarvestAlreadyRunningError } from "@/lib/harvest";
+import {
+  runHarvest,
+  startHarvestBackground,
+  HarvestAlreadyRunningError,
+} from "@/lib/harvest";
 import { requireAdmin, logAudit, AuthError } from "@/lib/auth";
 
 export const maxDuration = 300;
@@ -30,15 +34,30 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const limit =
     typeof body?.limit === "number" && body.limit > 0 ? Math.floor(body.limit) : undefined;
+  const isSyncMode = body?.mode === "sync" || isCron;
 
   try {
-    const outcome = await runHarvest({ limit });
-    try {
-      await logAudit(userId, "sync_triggered", outcome.syncRunId, `status=${outcome.status}`);
-    } catch {
-      // Abaikan jika log audit gagal saat cron
+    if (isSyncMode) {
+      const outcome = await runHarvest({ limit });
+      try {
+        await logAudit(userId, "sync_triggered", outcome.syncRunId, `status=${outcome.status}`);
+      } catch {
+        // Abaikan jika log audit gagal saat cron
+      }
+      return NextResponse.json(outcome);
     }
-    return NextResponse.json(outcome);
+
+    // Default: Background Non-blocking Execution (respons instan HTTP 202)
+    const { syncRunId } = await startHarvestBackground({ limit });
+    try {
+      await logAudit(userId, "sync_triggered", syncRunId, "status=started");
+    } catch {
+      // Abaikan jika log audit gagal
+    }
+    return NextResponse.json(
+      { syncRunId, status: "started", message: "Sinkronisasi dimulai di latar belakang" },
+      { status: 202 }
+    );
   } catch (err) {
     if (err instanceof HarvestAlreadyRunningError) {
       return NextResponse.json({ error: err.message }, { status: 409 });

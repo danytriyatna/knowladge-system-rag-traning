@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { X } from "lucide-react";
 
 const DISMISS_KEY = "jp_insight_chat_widget_dismissed";
 
@@ -35,20 +36,19 @@ export default function ChatWidget({ onOpen }: { onOpen: () => void }) {
   }
 
   return (
-    <div className="widget-enter fixed bottom-5 right-5 z-40 flex flex-col items-end gap-3">
+    <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3 animate-in fade-in-0 duration-300">
       {showCallout && (
-        <div className="callout-enter relative max-w-[250px] rounded-2xl rounded-br-sm border border-[#C7D8EE] bg-white px-4 py-3 text-sm text-stone-800 shadow-lg">
+        <div className="relative max-w-[250px] rounded-2xl rounded-br-xs border border-[#C7D8EE] bg-white px-4 py-3 text-sm text-[#1C1917] shadow-lg animate-in zoom-in-95">
           <button
             onClick={dismissCallout}
             aria-label="Tutup"
-            className="press absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-[#D9E1EC] bg-white text-[10px] text-stone-500 hover:text-[#123B72]"
+            className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-[#D9E1EC] bg-white text-xs text-[#64748B] hover:text-[#123B72] hover:bg-[#EEF4FC] cursor-pointer"
           >
-            &#10005;
+            <X className="h-3 w-3" />
           </button>
-          <p className="font-bold text-stone-900">Ada pertanyaan?</p>
-          <p className="mt-0.5 text-xs text-stone-500">
-            Coba tanya langsung ke Chat &amp; Kajian, jawabannya diambil dari seluruh
-            dokumen jurnal.
+          <p className="font-bold text-[#0B254B]">Ada pertanyaan?</p>
+          <p className="mt-0.5 text-xs text-[#64748B] leading-relaxed">
+            Coba tanya langsung ke Tanya JP &amp; Kajian, jawabannya dirujuk dari seluruh arsip jurnal.
           </p>
         </div>
       )}
@@ -56,7 +56,7 @@ export default function ChatWidget({ onOpen }: { onOpen: () => void }) {
       <button
         onClick={handleOpen}
         aria-label="Buka Chat & Kajian"
-        className={`press relative flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-xl ring-2 ring-[#EAB308]/90 hover:brightness-105 hover:scale-105 transition-all p-0.5 ${
+        className={`press relative flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-xl ring-2 ring-[#EAB308]/90 hover:brightness-105 hover:scale-105 transition-all p-0.5 cursor-pointer ${
           showCallout ? "widget-bounce" : ""
         }`}
       >

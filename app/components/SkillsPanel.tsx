@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { Zap, Plus, Trash2, Edit3, ChevronRight, AlertCircle } from "lucide-react";
 
 interface Skill {
   id: string;
@@ -85,19 +90,13 @@ export default function SkillsPanel() {
     setSaving(true);
     setError(null);
     try {
-      const existing = editingId ? skills?.find((s) => s.id === editingId) : undefined;
-      const res = await fetch(
-        editingId ? `/api/skills/${editingId}` : "/api/skills",
-        {
-          method: editingId ? "PUT" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(
-            editingId
-              ? { ...form, enabled: existing ? Boolean(existing.enabled) : true }
-              : form
-          ),
-        }
-      );
+      const url = editingId ? `/api/skills/${editingId}` : "/api/skills";
+      const method = editingId ? "PUT" : "POST";
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Gagal menyimpan skill");
       closeForm();
@@ -109,12 +108,10 @@ export default function SkillsPanel() {
     }
   }
 
-  async function handleToggleEnabled(skill: Skill) {
+  async function handleToggle(skill: Skill) {
     setSkills(
       (prev) =>
-        prev?.map((s) =>
-          s.id === skill.id ? { ...s, enabled: s.enabled ? 0 : 1 } : s
-        ) ?? null
+        prev?.map((s) => (s.id === skill.id ? { ...s, enabled: s.enabled ? 0 : 1 } : s)) ?? null
     );
     try {
       const res = await fetch(`/api/skills/${skill.id}`, {
@@ -147,135 +144,153 @@ export default function SkillsPanel() {
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-4">
-        <p className="text-sm text-muted">
-          Kumpulan kemampuan analisis data &amp; pengambilan kesimpulan yang otomatis
-          dipakai Chat AI setiap menjawab pertanyaan (skill yang nonaktif tidak dipakai).
-        </p>
-        <button
-          onClick={openAddForm}
-          className="press shrink-0 rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:opacity-90"
-        >
-          + Tambah Skill
-        </button>
-      </div>
-
-      {error && <p className="fade-in text-sm text-red-600 dark:text-red-400">{error}</p>}
-
-      {showForm && (
-        <form
-          onSubmit={handleSubmit}
-          className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4"
-        >
-          <h3 className="text-sm font-medium text-foreground">
-            {editingId ? "Edit Skill" : "Skill Baru"}
-          </h3>
-          <input
-            value={form.name}
-            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-            placeholder="Nama skill, mis. Analisis Tren & Pola"
-            className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
-          />
-          <input
-            value={form.description}
-            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-            placeholder="Deskripsi singkat (opsional)"
-            className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
-          />
-          <textarea
-            value={form.instructions}
-            onChange={(e) => setForm((f) => ({ ...f, instructions: e.target.value }))}
-            placeholder="Instruksi lengkap: bagaimana AI harus menganalisis data / menarik kesimpulan untuk skill ini"
-            rows={4}
-            className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
-          />
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={saving}
-              className="press rounded-full bg-accent px-5 py-2 text-sm font-medium text-accent-foreground hover:opacity-90 disabled:opacity-50"
-            >
-              {saving ? "Menyimpan..." : "Simpan"}
-            </button>
-            <button
-              type="button"
-              onClick={closeForm}
-              className="press rounded-full border border-border px-5 py-2 text-sm font-medium text-foreground hover:bg-background"
-            >
-              Batal
-            </button>
+    <div className="flex flex-col gap-6">
+      <Card>
+        <CardContent className="flex flex-wrap items-center justify-between gap-4 p-6">
+          <div className="max-w-2xl">
+            <h3 className="text-base font-bold text-[#0B254B]">Kemampuan Asistensi AI (Skills)</h3>
+            <p className="mt-1 text-sm text-[#64748B]">
+              Kumpulan instruksi penalaran dan ekstraksi ilmiah yang digunakan otomatis oleh AI saat
+              merumuskan sintesis kajian maupun rekomendasi kebijakan.
+            </p>
           </div>
-        </form>
+          <Button onClick={openAddForm} className="gap-2 rounded-xl font-semibold shadow-xs">
+            <Plus className="h-4 w-4" />
+            Tambah Kemampuan Baru
+          </Button>
+        </CardContent>
+      </Card>
+
+      {error && (
+        <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </div>
       )}
 
-      {skills === null && <p className="text-sm text-muted">Memuat skill...</p>}
-      {skills && skills.length === 0 && <p className="text-sm text-muted">Belum ada skill.</p>}
+      {showForm && (
+        <Card className="border-[#C2CEE0] bg-white animate-in fade-in-50">
+          <CardContent className="p-6">
+            <h4 className="mb-4 text-sm font-bold text-[#0B254B]">
+              {editingId ? "Edit Kemampuan AI" : "Form Kemampuan AI Baru"}
+            </h4>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-[#0B254B]">Nama Kemampuan</label>
+                <Input
+                  required
+                  value={form.name}
+                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                  placeholder="Contoh: Analisis Tren Standar SNI"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-[#0B254B]">Deskripsi Singkat</label>
+                <Input
+                  value={form.description}
+                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                  placeholder="Keterangan singkat peran kemampuan ini"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-[#0B254B]">Instruksi Penalaran (System Prompt)</label>
+                <textarea
+                  required
+                  rows={4}
+                  value={form.instructions}
+                  onChange={(e) => setForm((f) => ({ ...f, instructions: e.target.value }))}
+                  placeholder="Tuliskan bagaimana model AI harus membedah data dan menarik kesimpulan untuk skill ini..."
+                  className="w-full rounded-xl border border-[#D9E1EC] bg-white p-3.5 text-sm text-[#1C1917] outline-none focus:ring-2 focus:ring-[#123B72]"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={closeForm}>
+                  Batal
+                </Button>
+                <Button type="submit" disabled={saving}>
+                  {saving ? "Menyimpan..." : "Simpan Kemampuan"}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
-      <ul className="flex flex-col gap-2">
-        {skills?.map((skill) => {
-          const isExpanded = expandedId === skill.id;
-          return (
-            <li key={skill.id} className="rounded-xl border border-border bg-surface">
-              <button
-                onClick={() => setExpandedId(isExpanded ? null : skill.id)}
-                className="flex w-full items-start justify-between gap-3 p-4 text-left"
-              >
-                <div className="flex min-w-0 flex-col gap-0.5">
-                  <span className="flex items-center gap-2 text-sm font-medium text-foreground">
-                    <span
-                      className={`inline-block transition-transform ${isExpanded ? "rotate-90" : ""}`}
-                    >
-                      &#9656;
-                    </span>
-                    {skill.name}
-                  </span>
-                  {skill.description && (
-                    <span className="text-xs text-muted">{skill.description}</span>
-                  )}
-                </div>
-                <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${
-                    skill.enabled
-                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400"
-                      : "bg-background text-muted"
-                  }`}
-                >
-                  {skill.enabled ? "Aktif" : "Nonaktif"}
-                </span>
-              </button>
+      {skills === null && <p className="text-sm text-[#64748B]">Memuat daftar kemampuan...</p>}
+      {skills && skills.length === 0 && (
+        <Card className="p-8 text-center text-sm text-[#64748B]">
+          Belum ada kemampuan kustom yang dikonfigurasi.
+        </Card>
+      )}
 
-              {isExpanded && (
-                <div className="fade-in flex flex-col gap-3 border-t border-border p-4">
-                  <p className="whitespace-pre-wrap rounded-md bg-background p-3 text-sm leading-6">
-                    {skill.instructions}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
+      {skills && skills.length > 0 && (
+        <div className="flex flex-col gap-3">
+          {skills.map((skill) => {
+            const isExpanded = expandedId === skill.id;
+            return (
+              <Card key={skill.id} className="overflow-hidden border-[#D9E1EC]">
+                <div className="flex flex-wrap items-center justify-between gap-4 p-5">
+                  <div className="flex items-center gap-3">
                     <button
-                      onClick={() => handleToggleEnabled(skill)}
-                      className="press rounded-full border border-border px-4 py-1.5 text-xs font-medium text-foreground hover:bg-background"
+                      onClick={() => setExpandedId(isExpanded ? null : skill.id)}
+                      className="flex items-center gap-2 text-left font-bold text-[#0B254B] hover:text-[#123B72] cursor-pointer"
+                    >
+                      <ChevronRight
+                        className={`h-4 w-4 text-[#123B72] transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                      />
+                      <span>{skill.name}</span>
+                    </button>
+                    <Badge variant={skill.enabled ? "success" : "outline"} className="text-xs">
+                      {skill.enabled ? "Aktif" : "Nonaktif"}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleToggle(skill)}
+                      className="text-xs"
                     >
                       {skill.enabled ? "Nonaktifkan" : "Aktifkan"}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
                       onClick={() => openEditForm(skill)}
-                      className="press rounded-full border border-border px-4 py-1.5 text-xs font-medium text-foreground hover:bg-background"
+                      className="h-8 w-8 p-0"
                     >
-                      Edit
-                    </button>
-                    <button
+                      <Edit3 className="h-4 w-4 text-[#64748B]" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
                       onClick={() => handleDelete(skill.id)}
-                      className="press rounded-full border border-red-200 px-4 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
+                      className="h-8 w-8 p-0 hover:text-red-600"
                     >
-                      Hapus
-                    </button>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+
+                {skill.description && (
+                  <p className="px-5 pb-3 text-xs text-[#64748B] pl-11">
+                    {skill.description}
+                  </p>
+                )}
+
+                {isExpanded && (
+                  <div className="border-t border-[#D9E1EC] bg-[#F8FAFD] p-5 pl-11 text-xs text-[#1C1917] animate-in fade-in-50">
+                    <p className="font-semibold text-[#0B254B] mb-1">Instruksi Khusus Model:</p>
+                    <p className="whitespace-pre-wrap font-mono text-[11px] leading-relaxed text-[#475569]">
+                      {skill.instructions}
+                    </p>
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

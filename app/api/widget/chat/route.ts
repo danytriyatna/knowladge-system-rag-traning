@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { embedTexts } from "@/lib/embedding";
 import { searchSimilarChunks, countEmbeddings, type RetrievedChunk } from "@/lib/rag";
-import { answerFromContext } from "@/lib/chat";
+import { answerFromContext, logAndDescribeGeminiError } from "@/lib/chat";
 import { NO_SOURCE_ANSWER, validSourceNumbers } from "@/lib/citation";
 import { searchPublishedOjsCorpus } from "@/lib/publishedLocal";
 
@@ -101,11 +101,14 @@ export async function POST(request: Request) {
       rawAnswer = result.answer;
       usedSourceNumbers = result.usedSourceNumbers;
     } catch (err) {
-      const message =
-        err instanceof Error && err.message.includes("GEMINI_API_KEY")
-          ? "Layanan AI sedang dalam konfigurasi kunci API."
-          : "Gagal menyusun jawaban saat ini.";
-      return NextResponse.json({ error: message }, { status: 502, headers: CORS_HEADERS });
+      const { message, status } = logAndDescribeGeminiError(
+        "POST /api/widget/chat",
+        err,
+      );
+      return NextResponse.json(
+        { error: message },
+        { status, headers: CORS_HEADERS },
+      );
     }
 
     const usedNumbers = new Set(validSourceNumbers(usedSourceNumbers, chunks.length));

@@ -8,6 +8,8 @@ interface SyncRunRow {
   started_at: string;
   finished_at: string | null;
   new_documents_found: number;
+  total_documents: number;
+  processed_count: number;
   status: string;
   error_message: string | null;
   detail: string | null;
@@ -61,7 +63,7 @@ export async function GET() {
   }
 
   const rows = await sql<SyncRunRow[]>`
-    SELECT id, started_at, finished_at, new_documents_found, status, error_message, detail
+    SELECT id, started_at, finished_at, new_documents_found, total_documents, processed_count, status, error_message, detail
     FROM sync_runs ORDER BY started_at DESC LIMIT 20
   `;
 
@@ -70,6 +72,8 @@ export async function GET() {
     started_at: row.started_at,
     finished_at: row.finished_at,
     new_documents_found: row.new_documents_found,
+    total_documents: row.total_documents,
+    processed_count: row.processed_count,
     status: row.status,
     error_message: summarize(row),
   }));

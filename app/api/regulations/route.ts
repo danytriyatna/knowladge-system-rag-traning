@@ -124,13 +124,21 @@ export async function POST() {
     throw err;
   }
 
-  const result = await backfillRegulationMentions();
-  await logAudit(
-    user.id,
-    "backfill_regulation_mentions",
-    undefined,
-    `${result.mentions} rujukan dari ${result.documents} dokumen`
-  );
+  try {
+    const result = await backfillRegulationMentions();
+    await logAudit(
+      user.id,
+      "backfill_regulation_mentions",
+      undefined,
+      `${result.mentions} rujukan dari ${result.documents} dokumen`
+    );
 
-  return NextResponse.json(result);
+    return NextResponse.json(result);
+  } catch (err) {
+    console.error("[POST /api/regulations]", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Panen regulasi gagal" },
+      { status: 500 }
+    );
+  }
 }

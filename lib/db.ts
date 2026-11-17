@@ -4,26 +4,20 @@ declare global {
   var __sql: ReturnType<typeof postgres> | undefined;
 }
 
-// Connection string pooled (Supavisor, port 6543) dipakai untuk semua
-// koneksi — lokal maupun Vercel — karena direct connection (port 5432) tidak
-// selalu bisa dijangkau dari jaringan yang tidak punya rute IPv6.
-const connectionString = process.env.DATABASE_URL_POOLED;
+// Connection string mendukung DATABASE_URL atau DATABASE_URL_POOLED.
+const connectionString = process.env.DATABASE_URL || process.env.DATABASE_URL_POOLED;
 if (!connectionString) {
-  throw new Error("DATABASE_URL_POOLED belum diset di environment");
+  throw new Error("DATABASE_URL / DATABASE_URL_POOLED belum diset di environment");
 }
 
-// max:1 sesuai rekomendasi Supabase untuk serverless — tiap cold start
-// Vercel bikin instance postgres.js baru, dan tanpa ini tiap instance
-// membuka pool default (10 koneksi) yang menumpuk lintas cold start sampai
-// slot koneksi Supavisor habis (request jadi hang, bukan error, menunggu
-// slot yang tidak pernah kosong). idle_timeout melepas koneksi menganggur
-// balik ke pooler, connect_timeout mencegah hang tanpa batas kalau pooler
-// sendiri sedang penuh.
+// Di serverless Vercel, max:1 mencegah penumpukan pool lintas cold start.
+// Di lingkungan lokal/non-serverless, max:5 diperlukan agar kueri paralel
+// (auth, docs, chat) tidak saling mengunci (deadlock).
 const sql =
   global.__sql ??
   postgres(connectionString, {
     prepare: false,
-    max: 1,
+    max: process.env.VERCEL ? 1 : 5,
     idle_timeout: 20,
     connect_timeout: 10,
   });

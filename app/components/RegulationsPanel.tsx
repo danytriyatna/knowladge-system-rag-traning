@@ -2,6 +2,29 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table";
+import {
+  BookOpen,
+  Search,
+  ExternalLink,
+  ArrowLeft,
+  RefreshCw,
+  AlertCircle,
+  FileText,
+  Bookmark,
+  CheckCircle2,
+} from "lucide-react";
 
 interface RegulationSummary {
   jenis: string;
@@ -46,12 +69,12 @@ interface RegulationDetail {
 type View = "terbanyak" | "edisi";
 
 const JENIS_CLASS: Record<string, string> = {
-  SNI: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400",
-  PERMEN: "bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-400",
-  PP: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400",
-  UU: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400",
-  PERPRES: "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-400",
-  SE: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+  SNI: "bg-blue-100 text-blue-800 border-blue-200",
+  PERMEN: "bg-indigo-100 text-indigo-800 border-indigo-200",
+  PP: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  UU: "bg-amber-100 text-amber-800 border-amber-200",
+  PERPRES: "bg-orange-100 text-orange-800 border-orange-200",
+  SE: "bg-slate-100 text-slate-800 border-slate-200",
 };
 
 const JENIS_FILTERS = ["SNI", "PERMEN", "PP", "UU", "PERPRES"] as const;
@@ -60,75 +83,123 @@ function badgeClass(jenis: string) {
   return JENIS_CLASS[jenis] ?? JENIS_CLASS.SE;
 }
 
+type ApiErrorShape = { error?: string };
+
+async function readJsonSafe<T>(res: Response): Promise<(T & ApiErrorShape) | null> {
+  try {
+    return (await res.json()) as T & ApiErrorShape;
+  } catch {
+    return null;
+  }
+}
+
 export default function RegulationsPanel({ isAdmin }: { isAdmin: boolean }) {
-  const [view, setView] = useState<View>("terbanyak");
   const [regulations, setRegulations] = useState<RegulationSummary[] | null>(null);
   const [outdated, setOutdated] = useState<OutdatedEdition[] | null>(null);
+  const [selectedNomor, setSelectedNomor] = useState<string | null>(null);
+  const [detail, setDetail] = useState<RegulationDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [backfilling, setBackfilling] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
 
   const [search, setSearch] = useState("");
   const [jenisFilter, setJenisFilter] = useState<string | null>(null);
-
-  const [selected, setSelected] = useState<string | null>(null);
-  const [detail, setDetail] = useState<RegulationDetail | null>(null);
-  const [detailError, setDetailError] = useState<string | null>(null);
-  const [detailKey, setDetailKey] = useState(0);
+  const [view, setView] = useState<View>("terbanyak");
 
   const [linkUrl, setLinkUrl] = useState("");
   const [linkTitle, setLinkTitle] = useState("");
-  const [linkError, setLinkError] = useState<string | null>(null);
   const [savingLink, setSavingLink] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
 
-  // Fetch di-inline di dalam effect (pola yang sama dengan SyncPanel) supaya
-  // tidak ada pemanggilan fungsi pengubah state langsung dari effect.
-  // `reloadKey` dinaikkan setelah backfill untuk memicu muat ulang.
+  const [backfilling, setBackfilling] = useState(false);
+
+  async function loadList() {
+    try {
+      const [listRes, outdatedRes] = await Promise.all([
+        fetch("/api/regulations"),
+        fetch("/api/regulations?view=outdated"),
+      ]);
+      const [listData, outdatedData] = await Promise.all([
+        readJsonSafe<{ regulations?: RegulationSummary[] }>(listRes),
+        readJsonSafe<{ outdated?: OutdatedEdition[] }>(outdatedRes),
+      ]);
+      if (!listRes.ok) {
+        throw new Error(listData?.error ?? `Gagal memuat regulasi (HTTP ${listRes.status})`);
+      }
+      if (!outdatedRes.ok) {
+        throw new Error(outdatedData?.error ?? `Gagal memuat edisi lama (HTTP ${outdatedRes.status})`);
+      }
+      setRegulations(listData?.regulations ?? []);
+      setOutdated(outdatedData?.outdated ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal memuat regulasi");
+    }
+  }
+
   useEffect(() => {
     let ignore = false;
     Promise.all([
-      fetch("/api/regulations?limit=500").then((r) => r.json().then((d) => [r.ok, d] as const)),
-      fetch("/api/regulations?view=outdated").then((r) => r.json().then((d) => [r.ok, d] as const)),
+      fetch("/api/regulations").then(async (res) => ({
+        ok: res.ok,
+        status: res.status,
+        data: await readJsonSafe<{ regulations?: RegulationSummary[] }>(res),
+      })),
+      fetch("/api/regulations?view=outdated").then(async (res) => ({
+        ok: res.ok,
+        status: res.status,
+        data: await readJsonSafe<{ outdated?: OutdatedEdition[] }>(res),
+      })),
     ])
-      .then(([[okTop, dataTop], [okOld, dataOld]]) => {
-        if (ignore) return;
-        if (!okTop) throw new Error(dataTop.error ?? "Gagal memuat daftar peraturan");
-        if (!okOld) throw new Error(dataOld.error ?? "Gagal memuat deteksi edisi");
-        setRegulations(dataTop.regulations ?? []);
-        setOutdated(dataOld.outdated ?? []);
-        setError(null);
+      .then(([listRes, outdatedRes]) => {
+        if (!ignore) {
+          if (!listRes.ok) {
+            throw new Error(listRes.data?.error ?? `Gagal memuat regulasi (HTTP ${listRes.status})`);
+          }
+          if (!outdatedRes.ok) {
+            throw new Error(outdatedRes.data?.error ?? `Gagal memuat edisi lama (HTTP ${outdatedRes.status})`);
+          }
+          setRegulations(listRes.data?.regulations ?? []);
+          setOutdated(outdatedRes.data?.outdated ?? []);
+        }
       })
-      .catch((err: unknown) => {
-        if (ignore) return;
-        setError(err instanceof Error ? err.message : "Gagal memuat data peraturan");
+      .catch((err) => {
+        if (!ignore) setError(err instanceof Error ? err.message : "Gagal memuat regulasi");
       });
     return () => {
       ignore = true;
     };
-  }, [reloadKey]);
+  }, []);
 
-  // Muat rincian peraturan yang dipilih.
-  useEffect(() => {
-    if (!selected) return;
-    let ignore = false;
-    fetch(`/api/regulations?nomor=${encodeURIComponent(selected)}`)
-      .then((r) => r.json().then((d) => [r.ok, d] as const))
-      .then(([ok, data]) => {
-        if (ignore) return;
-        if (!ok) throw new Error(data.error ?? "Gagal memuat rincian peraturan");
-        setDetail(data.detail);
-        setDetailError(null);
-      })
-      .catch((err: unknown) => {
-        if (ignore) return;
-        setDetailError(err instanceof Error ? err.message : "Gagal memuat rincian");
-      });
-    return () => {
-      ignore = true;
-    };
-  }, [selected, detailKey]);
+  async function openDetail(nomorLengkap: string) {
+    setSelectedNomor(nomorLengkap);
+    setDetailLoading(true);
+    setDetail(null);
+    setError(null);
+    setLinkError(null);
+    try {
+      const res = await fetch(`/api/regulations?nomor=${encodeURIComponent(nomorLengkap)}`);
+      const data = await readJsonSafe<{ detail?: RegulationDetail }>(res);
+      if (!res.ok) {
+        throw new Error(data?.error ?? `Gagal memuat rincian regulasi (HTTP ${res.status})`);
+      }
+      const d = data?.detail;
+      if (!d) throw new Error("Data rincian regulasi tidak ditemukan");
+      setDetail(d);
+      setLinkUrl(d.link?.url ?? "");
+      setLinkTitle(d.link?.judul_resmi ?? "");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal memuat rincian regulasi");
+    } finally {
+      setDetailLoading(false);
+    }
+  }
 
-  async function saveLink(nomor: string, hapus = false) {
+  function closeDetail() {
+    setSelectedNomor(null);
+    setDetail(null);
+    setError(null);
+  }
+
+  async function saveLink(nomorLengkap: string, remove = false) {
     setSavingLink(true);
     setLinkError(null);
     try {
@@ -136,16 +207,16 @@ export default function RegulationsPanel({ isAdmin }: { isAdmin: boolean }) {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          nomor,
-          url: hapus ? "" : linkUrl.trim(),
-          judul_resmi: hapus ? "" : linkTitle.trim(),
+          nomor: nomorLengkap,
+          url: remove ? "" : linkUrl,
+          judul_resmi: remove ? "" : linkTitle,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Gagal menyimpan tautan");
-      setLinkUrl("");
-      setLinkTitle("");
-      setDetailKey((k) => k + 1);
+      const data = await readJsonSafe<Record<string, unknown>>(res);
+      if (!res.ok) {
+        throw new Error(data?.error ?? `Gagal menyimpan tautan (HTTP ${res.status})`);
+      }
+      await openDetail(nomorLengkap);
     } catch (err) {
       setLinkError(err instanceof Error ? err.message : "Gagal menyimpan tautan");
     } finally {
@@ -158,456 +229,421 @@ export default function RegulationsPanel({ isAdmin }: { isAdmin: boolean }) {
     setError(null);
     try {
       const res = await fetch("/api/regulations", { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Gagal memanen ulang rujukan");
-      setReloadKey((k) => k + 1);
+      const data = await readJsonSafe<{ documents?: number; mentions?: number }>(res);
+      if (!res.ok) {
+        throw new Error(data?.error ?? `Panen regulasi gagal (HTTP ${res.status})`);
+      }
+      await loadList();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal memanen ulang rujukan");
+      setError(err instanceof Error ? err.message : "Panen regulasi gagal");
     } finally {
       setBackfilling(false);
     }
   }
 
-  function openDetail(nomor: string) {
-    setSelected(nomor);
-    setDetail(null);
-    setDetailError(null);
-    setLinkUrl("");
-    setLinkTitle("");
-    setLinkError(null);
-  }
-
   const filtered = useMemo(() => {
     if (!regulations) return null;
-    const q = search.trim().toLowerCase();
     return regulations.filter((r) => {
       if (jenisFilter && r.jenis !== jenisFilter) return false;
-      if (!q) return true;
-      return (
-        r.nomor_lengkap.toLowerCase().includes(q) ||
-        r.nomor_normal.toLowerCase().includes(q) ||
-        String(r.tahun ?? "").includes(q)
-      );
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        const matchNomor = r.nomor_lengkap.toLowerCase().includes(q);
+        const matchTahun = r.tahun ? String(r.tahun).includes(q) : false;
+        if (!matchNomor && !matchTahun) return false;
+      }
+      return true;
     });
-  }, [regulations, search, jenisFilter]);
+  }, [regulations, jenisFilter, search]);
 
   const filteredOutdated = useMemo(() => {
     if (!outdated) return null;
-    const q = search.trim().toLowerCase();
-    if (!q) return outdated;
+    if (!search.trim()) return outdated;
+    const q = search.toLowerCase();
     return outdated.filter(
       (o) =>
         o.dirujuk.toLowerCase().includes(q) ||
         o.edisi_terbaru.toLowerCase().includes(q) ||
-        (o.title || o.filename).toLowerCase().includes(q)
+        o.title.toLowerCase().includes(q)
     );
   }, [outdated, search]);
 
-  // ---- Tampilan rincian satu peraturan ----
-  if (selected) {
+  if (selectedNomor) {
     return (
-      <div className="flex flex-col gap-4">
-        <button
-          onClick={() => setSelected(null)}
-          className="self-start text-sm text-muted transition-colors hover:text-foreground"
-        >
-          &larr; Kembali ke daftar peraturan
-        </button>
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={closeDetail} className="gap-1.5 rounded-xl text-xs font-semibold">
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Kembali ke Daftar
+          </Button>
+          <span className="text-xs text-[#64748B]">&bull;</span>
+          <span className="font-mono text-xs font-semibold text-[#0B254B]">{selectedNomor}</span>
+        </div>
 
-        {detailError && (
-          <p className="fade-in text-sm text-red-600 dark:text-red-400">{detailError}</p>
+        {detailLoading && <p className="text-sm text-[#64748B]">Memuat data rincian regulasi...</p>}
+
+        {error && (
+          <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{error}</span>
+          </div>
         )}
-        {!detail && !detailError && <p className="text-sm text-muted">Memuat rincian...</p>}
 
         {detail && (
-          <>
-            <div className="flex flex-col gap-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className={`rounded-full px-2 py-0.5 text-xs ${badgeClass(detail.jenis)}`}>
-                  {detail.jenis}
-                </span>
-                <h2 className="text-lg font-semibold tracking-tight">{detail.nomor_lengkap}</h2>
-              </div>
-              {detail.judul && (
-                <p className="text-base text-foreground">
-                  tentang <span className="font-medium">{detail.judul}</span>
-                </p>
-              )}
-              <p className="text-sm text-muted">
-                Dirujuk oleh {detail.documents.length} naskah di korpus.
-              </p>
-              {detail.judul_varian.length > 0 && (
-                <p className="text-xs text-muted">
-                  Penulisan judul lain yang ditemukan di naskah:{" "}
-                  {detail.judul_varian.join(" · ")}
-                </p>
-              )}
-            </div>
-
-            {/* Rujukan ke sumber resmi. URL persis dikurasi admin — nomor
-                identitas dokumen di JDIH tidak bisa diturunkan dari nomor
-                peraturan, jadi menebaknya berisiko menunjuk aturan lain. */}
-            <div className="rounded-xl border border-border bg-surface p-4">
-              <h3 className="mb-2 text-sm font-medium text-foreground">Sumber resmi</h3>
-              {detail.link ? (
-                <>
-                  <a
-                    href={detail.link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm font-medium text-accent-text hover:underline"
-                  >
-                    {detail.link.judul_resmi || detail.link.url} ↗
-                  </a>
-                  <p className="mt-1 text-xs text-muted">
-                    Ditetapkan kurator pada{" "}
-                    {new Date(detail.link.curated_at).toLocaleDateString("id-ID")}.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <a
-                    href={detail.jdih_search_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-accent-text hover:underline"
-                  >
-                    Cari &ldquo;{detail.nomor_lengkap}&rdquo; di JDIH BPK ↗
-                  </a>
-                  <p className="mt-1 text-xs text-muted">
-                    Tautan resmi peraturan ini belum ditetapkan, jadi ini baru pencarian
-                    dan hasilnya bisa meleset.
-                  </p>
-                </>
-              )}
-
-              {isAdmin && (
-                <div className="mt-3 flex flex-col gap-2 border-t border-border pt-3">
-                  <label className="text-xs text-muted">
-                    Tempel URL resmi dari peraturan.bpk.go.id / jdih.pu.go.id
-                  </label>
-                  <input
-                    value={linkUrl}
-                    onChange={(e) => setLinkUrl(e.target.value)}
-                    placeholder="https://peraturan.bpk.go.id/Details/285541/permen-pupr-no-5-tahun-2008"
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
-                  />
-                  <input
-                    value={linkTitle}
-                    onChange={(e) => setLinkTitle(e.target.value)}
-                    placeholder="Judul resmi (opsional)"
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
-                  />
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => saveLink(detail.nomor_lengkap)}
-                      disabled={savingLink}
-                      className="press rounded-full bg-accent px-4 py-1.5 text-xs font-medium text-accent-foreground hover:opacity-90 disabled:opacity-50"
-                    >
-                      {savingLink ? "Menyimpan..." : "Simpan tautan"}
-                    </button>
-                    {detail.link && (
-                      <button
-                        onClick={() => saveLink(detail.nomor_lengkap, true)}
-                        disabled={savingLink}
-                        className="rounded-full border border-border px-4 py-1.5 text-xs text-muted transition-colors hover:text-red-600 disabled:opacity-50"
-                      >
-                        Hapus tautan
-                      </button>
-                    )}
-                  </div>
-                  {linkError && (
-                    <p className="text-xs text-red-600 dark:text-red-400">{linkError}</p>
-                  )}
+          <div className="flex flex-col gap-6">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-bold ${badgeClass(detail.jenis)}`}>
+                    {detail.jenis}
+                  </span>
+                  <h2 className="text-xl font-extrabold text-[#0B254B]">
+                    {detail.nomor_lengkap}
+                  </h2>
                 </div>
-              )}
-            </div>
-
-            {/* Batas kejujuran: teks asli peraturan belum ada di sistem, jadi
-                seluruh isi di halaman ini berasal dari naskah yang merujuk. */}
-            <div className="rounded-xl border border-border bg-surface p-4">
-              <h3 className="mb-2 text-sm font-medium text-foreground">Isi peraturan</h3>
-              {detail.pasal_disebut.length > 0 ? (
-                <>
-                  <p className="mb-2 text-xs text-muted">
-                    Pasal yang dikutip naskah saat merujuk peraturan ini:
+                {detail.judul && (
+                  <p className="text-base text-[#1C1917] font-medium leading-relaxed mt-1">
+                    tentang {detail.judul}
                   </p>
-                  <div className="mb-3 flex flex-wrap gap-1.5">
-                    {detail.pasal_disebut.map((p) => (
-                      <span
-                        key={p}
-                        className="rounded-full border border-border px-3 py-1 text-xs text-foreground"
+                )}
+                <p className="mt-2 text-xs text-[#64748B]">
+                  Dirujuk oleh <strong className="text-[#0B254B]">{detail.documents.length}</strong> naskah di dalam korpus.
+                </p>
+                {detail.judul_varian.length > 0 && (
+                  <p className="mt-1 text-xs text-[#64748B]">
+                    Varian judul lain: {detail.judul_varian.join(" · ")}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Sumber Resmi */}
+            <Card>
+              <CardContent className="p-6">
+                <h3 className="mb-2 text-sm font-bold text-[#0B254B]">Tautan Sumber Resmi</h3>
+                {detail.link ? (
+                  <div>
+                    <a
+                      href={detail.link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#123B72] hover:underline"
+                    >
+                      <span>{detail.link.judul_resmi || detail.link.url}</span>
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                    <p className="mt-1 text-xs text-[#64748B]">
+                      Tautan resmi dikurasi pada {new Date(detail.link.curated_at).toLocaleDateString("id-ID")}.
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <a
+                      href={detail.jdih_search_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#123B72] hover:underline"
+                    >
+                      <span>Cari &ldquo;{detail.nomor_lengkap}&rdquo; di JDIH BPK</span>
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                    <p className="mt-1 text-xs text-[#64748B]">
+                      Tautan resmi peraturan ini belum ditetapkan kurator.
+                    </p>
+                  </div>
+                )}
+
+                {isAdmin && (
+                  <div className="mt-4 flex flex-col gap-3 border-t border-[#D9E1EC] pt-4">
+                    <label className="text-xs font-semibold text-[#0B254B]">
+                      Atur Tautan Resmi (peraturan.bpk.go.id / jdih.pu.go.id)
+                    </label>
+                    <Input
+                      value={linkUrl}
+                      onChange={(e) => setLinkUrl(e.target.value)}
+                      placeholder="https://peraturan.bpk.go.id/Details/..."
+                    />
+                    <Input
+                      value={linkTitle}
+                      onChange={(e) => setLinkTitle(e.target.value)}
+                      placeholder="Judul resmi peraturan (opsional)"
+                    />
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => saveLink(detail.nomor_lengkap)}
+                        disabled={savingLink}
                       >
+                        {savingLink ? "Menyimpan..." : "Simpan Tautan"}
+                      </Button>
+                      {detail.link && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => saveLink(detail.nomor_lengkap, true)}
+                          disabled={savingLink}
+                          className="hover:text-red-600"
+                        >
+                          Hapus Tautan
+                        </Button>
+                      )}
+                    </div>
+                    {linkError && <p className="text-xs text-red-600">{linkError}</p>}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Pasal Disebut */}
+            <Card>
+              <CardContent className="p-6">
+                <h3 className="mb-2 text-sm font-bold text-[#0B254B]">Pasal yang Dikutip Naskah</h3>
+                {detail.pasal_disebut.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {detail.pasal_disebut.map((p) => (
+                      <Badge key={p} variant="secondary" className="text-xs font-medium">
                         {p}
-                      </span>
+                      </Badge>
                     ))}
                   </div>
-                </>
-              ) : (
-                <p className="mb-3 text-sm text-muted">
-                  Tidak ada naskah yang menyebut pasal tertentu dari peraturan ini.
-                </p>
-              )}
-              <p className="text-xs text-muted">
-                Teks asli peraturan ini <strong>belum ada di sistem</strong>. Judul dan
-                pasal di atas dipungut dari kalimat naskah yang merujuknya, dan kutipan di
-                bawah adalah isi menurut naskah tersebut &mdash; bukan salinan bunyi
-                pasalnya. Untuk membaca bunyi aslinya, teks peraturan perlu diunggah lebih
-                dulu.
-              </p>
-            </div>
+                ) : (
+                  <p className="text-sm text-[#64748B]">
+                    Tidak ada naskah yang menyebut pasal spesifik dari peraturan ini.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
 
-            {detail.editions.length > 1 && (
-              <div className="rounded-xl border border-border bg-surface p-4">
-                <h3 className="mb-2 text-sm font-medium text-foreground">
-                  Edisi lain yang beredar di korpus
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {detail.editions.map((e) => (
-                    <button
-                      key={e.nomor_lengkap}
-                      onClick={() => openDetail(e.nomor_lengkap)}
-                      className={`rounded-full border px-3 py-1 text-xs transition-colors ${
-                        e.nomor_lengkap === detail.nomor_lengkap
-                          ? "border-transparent bg-accent-soft text-accent-text"
-                          : "border-border text-muted hover:text-foreground"
-                      }`}
-                    >
-                      {e.nomor_lengkap} &middot; {e.document_count} naskah
-                    </button>
-                  ))}
-                </div>
-                <p className="mt-2 text-xs text-muted">
-                  Beberapa edisi terdeteksi. Sistem belum punya data status resmi, jadi ini
-                  bukan pernyataan bahwa edisi lama sudah dicabut.
-                </p>
-              </div>
-            )}
-
+            {/* Apa kata naskah yang merujuk */}
             <div className="flex flex-col gap-3">
-              <h3 className="text-sm font-medium text-muted">
-                Apa kata naskah yang merujuk
+              <h3 className="text-sm font-bold text-[#0B254B]">
+                Kutipan Pembahasan dari Naskah ({detail.documents.length} Dokumen)
               </h3>
               {detail.documents.map((doc) => (
-                <div
-                  key={doc.document_id}
-                  className="rounded-xl border border-border bg-surface p-4"
-                >
-                  <Link
-                    href={`/documents/${doc.document_id}`}
-                    className="text-sm font-medium text-accent-text hover:underline"
-                  >
-                    {doc.title || doc.filename}
-                  </Link>
-                  {doc.published_year && (
-                    <span className="ml-2 text-xs text-muted">{doc.published_year}</span>
-                  )}
-                  <ul className="mt-2 flex flex-col gap-2">
+                <Card key={doc.document_id} className="p-5">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-[#123B72]" />
+                    <Link
+                      href={`/documents/${doc.document_id}`}
+                      className="text-sm font-bold text-[#123B72] hover:underline"
+                    >
+                      {doc.title || doc.filename}
+                    </Link>
+                    {doc.published_year && (
+                      <span className="text-xs text-[#64748B]">({doc.published_year})</span>
+                    )}
+                  </div>
+                  <ul className="mt-3 flex flex-col gap-2">
                     {doc.snippets.map((s) => (
-                      <li key={s.chunk_index} className="text-sm text-muted">
-                        <span className="mr-2 text-xs text-muted">bagian {s.chunk_index + 1}</span>
+                      <li key={s.chunk_index} className="rounded-lg bg-[#F8FAFD] p-3 text-xs text-[#334155] leading-relaxed">
+                        <span className="font-semibold text-[#123B72] mr-1.5">[Bagian {s.chunk_index + 1}]</span>
                         {s.text}
                       </li>
                     ))}
                   </ul>
-                </div>
+                </Card>
               ))}
             </div>
-          </>
+          </div>
         )}
       </div>
     );
   }
 
-  // ---- Tampilan daftar ----
+  // Tampilan Daftar Regulasi
   const totalRujukan = filtered?.reduce((sum, r) => sum + r.mention_count, 0) ?? 0;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <p className="max-w-2xl text-sm text-muted">
-          Peraturan dan SNI yang dirujuk di dalam naskah korpus, dipanen otomatis dari
-          teks naskah. Klik salah satu untuk melihat naskah mana yang merujuknya dan di
-          kalimat apa.
-        </p>
-        {isAdmin && (
-          <button
-            onClick={handleBackfill}
-            disabled={backfilling}
-            className="press shrink-0 rounded-full bg-accent px-5 py-2 text-sm font-medium text-accent-foreground hover:opacity-90 disabled:opacity-50"
+    <div className="flex flex-col gap-6">
+      <Card>
+        <CardContent className="flex flex-wrap items-center justify-between gap-4 p-6">
+          <div className="max-w-2xl">
+            <h3 className="text-base font-bold text-[#0B254B]">Basis Regulasi &amp; SNI yang Dirujuk</h3>
+            <p className="mt-1 text-sm text-[#64748B]">
+              Peraturan perundang-undangan dan Standar Nasional Indonesia (SNI) bidang permukiman yang
+              dipanen otomatis dari daftar rujukan naskah ilmiah.
+            </p>
+          </div>
+          {isAdmin && (
+            <Button
+              onClick={handleBackfill}
+              disabled={backfilling}
+              className="gap-2 rounded-xl font-semibold shadow-xs"
+            >
+              <RefreshCw className={`h-4 w-4 ${backfilling ? "animate-spin" : ""}`} />
+              {backfilling ? "Memanen Ulang..." : "Panen Ulang Rujukan"}
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      {error && (
+        <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative flex-1">
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94A3B8]" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Cari nomor peraturan, mis. SNI 1726, PP 16, Permen PUPR..."
+            className="pl-10 h-11"
+          />
+        </div>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant={view === "terbanyak" ? "default" : "outline"}
+            onClick={() => setView("terbanyak")}
+            className="rounded-full text-xs"
           >
-            {backfilling ? "Memanen ulang..." : "Panen Ulang Rujukan"}
-          </button>
-        )}
-      </div>
-
-      {error && <p className="fade-in text-sm text-red-600 dark:text-red-400">{error}</p>}
-
-      <input
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Cari nomor peraturan, mis. 1726, PP 16, SNI 6389, 2021..."
-        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent"
-      />
-
-      <div className="flex flex-wrap gap-2">
-        {(
-          [
-            ["terbanyak", "Paling Sering Dirujuk"],
-            ["edisi", `Edisi Lama (${outdated?.length ?? 0})`],
-          ] as [View, string][]
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            onClick={() => setView(key)}
-            className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-              view === key
-                ? "bg-accent-soft text-accent-text"
-                : "text-muted hover:bg-background hover:text-foreground"
-            }`}
+            Paling Sering Dirujuk
+          </Button>
+          <Button
+            size="sm"
+            variant={view === "edisi" ? "default" : "outline"}
+            onClick={() => setView("edisi")}
+            className="rounded-full text-xs"
           >
-            {label}
-          </button>
-        ))}
+            Edisi Lama ({outdated?.length ?? 0})
+          </Button>
+        </div>
       </div>
 
       {view === "terbanyak" && (
-        <>
-          <div className="flex flex-wrap gap-1.5">
-            <button
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Button
+              size="sm"
+              variant={jenisFilter === null ? "default" : "outline"}
               onClick={() => setJenisFilter(null)}
-              className={`rounded-full border px-3 py-1 text-xs transition-colors ${
-                jenisFilter === null
-                  ? "border-transparent bg-accent-soft text-accent-text"
-                  : "border-border text-muted hover:text-foreground"
-              }`}
+              className="rounded-full text-xs h-7 px-3"
             >
-              Semua
-            </button>
+              Semua Jenis
+            </Button>
             {JENIS_FILTERS.map((j) => (
-              <button
+              <Button
                 key={j}
+                size="sm"
+                variant={jenisFilter === j ? "default" : "outline"}
                 onClick={() => setJenisFilter(jenisFilter === j ? null : j)}
-                className={`rounded-full border px-3 py-1 text-xs transition-colors ${
-                  jenisFilter === j
-                    ? "border-transparent bg-accent-soft text-accent-text"
-                    : "border-border text-muted hover:text-foreground"
-                }`}
+                className="rounded-full text-xs h-7 px-3"
               >
                 {j}
-              </button>
+              </Button>
             ))}
           </div>
 
           {filtered && (
-            <p className="text-xs text-muted">
-              {filtered.length} peraturan &middot; {totalRujukan} penyebutan
+            <p className="text-xs text-[#64748B]">
+              Menampilkan <strong className="text-[#0B254B]">{filtered.length}</strong> peraturan &middot;{" "}
+              <strong>{totalRujukan}</strong> total penyebutan
             </p>
           )}
-          {regulations === null && <p className="text-sm text-muted">Memuat...</p>}
+
+          {regulations === null && <p className="text-sm text-[#64748B]">Memuat regulasi...</p>}
           {filtered && filtered.length === 0 && (
-            <p className="text-sm text-muted">
-              Tidak ada peraturan yang cocok dengan pencarian atau filter ini.
-            </p>
+            <Card className="p-8 text-center text-sm text-[#64748B]">
+              Tidak ada peraturan yang cocok dengan pencarian &ldquo;{search}&rdquo;.
+            </Card>
           )}
+
           {filtered && filtered.length > 0 && (
-            <div className="overflow-x-auto rounded-xl border border-border">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-surface text-xs text-muted">
-                  <tr>
-                    <th className="px-3 py-2 font-medium">Jenis</th>
-                    <th className="px-3 py-2 font-medium">Nomor</th>
-                    <th className="px-3 py-2 font-medium">Naskah</th>
-                    <th className="px-3 py-2 font-medium">Penyebutan</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((r) => (
-                    <tr
-                      key={r.nomor_lengkap}
-                      onClick={() => openDetail(r.nomor_lengkap)}
-                      className="cursor-pointer border-t border-border transition-colors hover:bg-surface"
-                    >
-                      <td className="px-3 py-2">
-                        <span className={`rounded-full px-2 py-0.5 text-xs ${badgeClass(r.jenis)}`}>
-                          {r.jenis}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 font-medium text-foreground">
-                        {r.nomor_lengkap}
-                      </td>
-                      <td className="px-3 py-2 text-foreground">{r.document_count}</td>
-                      <td className="px-3 py-2 text-muted">{r.mention_count}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-24">Jenis</TableHead>
+                  <TableHead>Nomor Regulasi</TableHead>
+                  <TableHead className="text-center w-28">Naskah</TableHead>
+                  <TableHead className="text-center w-28">Penyebutan</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((r) => (
+                  <TableRow
+                    key={r.nomor_lengkap}
+                    onClick={() => openDetail(r.nomor_lengkap)}
+                    className="cursor-pointer"
+                  >
+                    <TableCell>
+                      <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-bold ${badgeClass(r.jenis)}`}>
+                        {r.jenis}
+                      </span>
+                    </TableCell>
+                    <TableCell className="font-bold text-[#0B254B]">
+                      {r.nomor_lengkap}
+                    </TableCell>
+                    <TableCell className="text-center font-semibold text-[#123B72]">
+                      {r.document_count} naskah
+                    </TableCell>
+                    <TableCell className="text-center text-[#64748B]">
+                      {r.mention_count} kali
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
-        </>
+        </div>
       )}
 
       {view === "edisi" && (
-        <>
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
-            Daftar ini menunjukkan naskah yang merujuk edisi lebih lama, sementara korpus
-            yang sama sudah memuat edisi yang lebih baru. Sistem belum punya data status
-            resmi, jadi ini <strong>bukan</strong> pernyataan bahwa edisi lama sudah
-            dicabut &mdash; penetapan status tetap perlu diperiksa kurator.
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-900 leading-relaxed">
+            <span>
+              Daftar ini menandai naskah yang merujuk edisi SNI/regulasi lama, sementara korpus telah
+              memuat naskah dengan edisi yang lebih baru (mis. SNI gempa 2002 vs 2012 vs 2019).
+            </span>
           </div>
-          {outdated === null && <p className="text-sm text-muted">Memuat...</p>}
+
           {filteredOutdated && filteredOutdated.length === 0 && (
-            <p className="text-sm text-muted">
-              Tidak ada rujukan ke edisi lama yang cocok dengan pencarian ini.
-            </p>
+            <Card className="p-8 text-center text-sm text-[#64748B]">
+              Tidak ada rujukan edisi lama yang terdeteksi.
+            </Card>
           )}
+
           {filteredOutdated && filteredOutdated.length > 0 && (
-            <div className="overflow-x-auto rounded-xl border border-border">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-surface text-xs text-muted">
-                  <tr>
-                    <th className="px-3 py-2 font-medium">Dirujuk</th>
-                    <th className="px-3 py-2 font-medium">Edisi Terbaru di Korpus</th>
-                    <th className="px-3 py-2 font-medium">Naskah</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredOutdated.map((o) => (
-                    <tr
-                      key={`${o.document_id}-${o.dirujuk}`}
-                      className="border-t border-border transition-colors hover:bg-surface"
-                    >
-                      <td className="whitespace-nowrap px-3 py-2">
-                        <button
-                          onClick={() => openDetail(o.dirujuk)}
-                          className="font-medium text-accent-text hover:underline"
-                        >
-                          {o.dirujuk}
-                        </button>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2">
-                        <button
-                          onClick={() => openDetail(o.edisi_terbaru)}
-                          className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700 hover:underline dark:bg-emerald-950 dark:text-emerald-400"
-                        >
-                          {o.edisi_terbaru}
-                        </button>
-                      </td>
-                      <td className="px-3 py-2 text-muted">
-                        <Link
-                          href={`/documents/${o.document_id}`}
-                          className="hover:text-foreground hover:underline"
-                        >
-                          {o.title || o.filename}
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Edisi Dirujuk</TableHead>
+                  <TableHead>Edisi Terbaru di Korpus</TableHead>
+                  <TableHead>Naskah Sumber</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredOutdated.map((o) => (
+                  <TableRow key={`${o.document_id}-${o.dirujuk}`}>
+                    <TableCell>
+                      <button
+                        onClick={() => openDetail(o.dirujuk)}
+                        className="font-bold text-[#123B72] hover:underline cursor-pointer"
+                      >
+                        {o.dirujuk}
+                      </button>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="success" className="cursor-pointer" onClick={() => openDetail(o.edisi_terbaru)}>
+                        {o.edisi_terbaru}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Link
+                        href={`/documents/${o.document_id}`}
+                        className="font-medium text-[#0B254B] hover:underline text-xs"
+                      >
+                        {o.title || o.filename}
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
-        </>
+        </div>
       )}
     </div>
   );
