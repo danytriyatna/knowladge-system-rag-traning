@@ -923,7 +923,7 @@ export default function Home() {
                 <span className="h-2 w-2 rounded-full bg-[#123B72]" aria-hidden="true" />
                 <span>
                   <strong className="font-semibold text-stone-700">JP-Insight</strong> · Jurnal
-                  Permukiman — Direktorat Bina Teknik Permukiman dan Perumahan, Kementerian PU
+                  Permukiman — Direktorat Bina Teknik Bangunan Gedung dan Penyehatan Lingkungan, Kementerian PU
                 </span>
               </div>
               <div className="flex items-center gap-4">
