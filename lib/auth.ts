@@ -22,6 +22,17 @@ export {
 
 /** Ambil user yang sedang login dari sesi NextAuth (Route Handler/Server Component). */
 export async function getCurrentUser(): Promise<UserRecord | null> {
+  if (process.env.DEV_MODE === "true") {
+    return {
+      id: "dev-admin-dany",
+      email: "dany@puskim.pu.go.id",
+      password_hash: "",
+      full_name: "Dany Triyatna",
+      role: "admin",
+      unit: "Direktorat Bina Teknik Bangunan Gedung dan Penyehatan Lingkungan",
+      created_at: "2026-11-04T00:00:00.000Z",
+    };
+  }
   const session = await auth();
   const userId = session?.user?.id;
   if (!userId) return null;
