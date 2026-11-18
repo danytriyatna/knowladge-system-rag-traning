@@ -133,7 +133,7 @@ async function buildPrompt(question: string, chunks: RetrievedChunk[]): Promise<
   const context = chunks
     .map(
       (chunk, i) =>
-        `[Sumber ${i + 1} — ${chunk.filename}, bagian ${chunk.chunk_index + 1}]\n${chunk.content}`
+        `[Sumber ${i + 1} — ${chunk.title ? `${chunk.title} (${chunk.filename})` : chunk.filename}, bagian ${chunk.chunk_index + 1}]\n${chunk.content}`
     )
     .join("\n\n");
 
@@ -145,7 +145,7 @@ async function buildPrompt(question: string, chunks: RetrievedChunk[]): Promise<
           .join("\n")}\n`
       : "";
 
-  return `Anda adalah asisten yang menjawab pertanyaan pengguna HANYA berdasarkan potongan dokumen (konteks) di bawah ini. Konteks ini diambil dari PDF yang sudah diupload dan diproses pengguna, dan diambil lewat pencarian kemiripan otomatis — sebagian sumber di bawah BISA SAJA tidak benar-benar relevan dengan pertanyaan meskipun ikut muncul di daftar, jadi jangan asumsikan semua sumber pasti berkaitan.
+  return `Anda adalah asisten JP-Insight yang menjawab pertanyaan pengguna HANYA berdasarkan potongan dokumen resmi di bawah ini (mencakup artikel terbitan OJS Jurnal Permukiman, halaman informasi & kebijakan portal web Jurnal Permukiman, dokumentasi resmi JP-Insight, atau dokumen yang diunggah pengguna). Konteks ini diambil lewat pencarian kemiripan otomatis — sebagian sumber di bawah BISA SAJA tidak benar-benar relevan dengan pertanyaan meskipun ikut muncul di daftar, jadi jangan asumsikan semua sumber pasti berkaitan.
 
 ATURAN WAJIB:
 1. Jawab HANYA berdasarkan informasi yang benar-benar ada di dalam konteks. Dilarang keras mengarang, menebak, atau menambahkan informasi yang tidak ada di konteks (jangan berhalusinasi).

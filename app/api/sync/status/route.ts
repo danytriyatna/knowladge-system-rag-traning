@@ -36,7 +36,14 @@ function summarize(row: SyncRunRow): string | null {
   return parts.join(", ");
 }
 
-export async function GET() {
+function parsePositiveInt(value: string | null, fallback: number, max: number): number {
+  if (!value) return fallback;
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return fallback;
+  return Math.min(parsed, max);
+}
+
+export async function GET(request: Request) {
   try {
     await requireAdmin();
   } catch (err) {
@@ -45,6 +52,10 @@ export async function GET() {
     }
     throw err;
   }
+
+  const { searchParams } = new URL(request.url);
+  const limit = parsePositiveInt(searchParams.get("limit"), 20, 100);
+  const requestedPage = parsePositiveInt(searchParams.get("page"), 1, 10000);
 
   if (process.env.DEV_MODE === "true") {
     return NextResponse.json({
@@ -59,12 +70,25 @@ export async function GET() {
           raw_status: "completed",
         },
       ],
+      total: 1,
+      page: 1,
+      limit,
+      totalPages: 1,
     });
   }
 
+  const [{ total }] = await sql<{ total: number }[]>`
+    SELECT COUNT(*)::int AS total FROM sync_runs
+  `;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const page = Math.min(requestedPage, totalPages);
+  const offset = (page - 1) * limit;
+
   const rows = await sql<SyncRunRow[]>`
     SELECT id, started_at, finished_at, new_documents_found, total_documents, processed_count, status, error_message, detail
-    FROM sync_runs ORDER BY started_at DESC LIMIT 20
+    FROM sync_runs
+    ORDER BY started_at DESC
+    LIMIT ${limit} OFFSET ${offset}
   `;
 
   const runs = rows.map((row) => ({
@@ -78,5 +102,11 @@ export async function GET() {
     error_message: summarize(row),
   }));
 
-  return NextResponse.json({ runs });
+  return NextResponse.json({
+    runs,
+    total,
+    page,
+    limit,
+    totalPages,
+  });
 }

@@ -1,24 +1,8 @@
 import { describe, it, expect } from "vitest";
+import { buildPaginationItems } from "@/components/ui/pagination";
 
 function getPaginationItems(current: number, total: number): (number | string)[] {
-  if (total <= 7) {
-    return Array.from({ length: total }, (_, i) => i + 1);
-  }
-  if (current <= 4) {
-    return [1, 2, 3, 4, 5, "ellipsis-end", total];
-  }
-  if (current >= total - 3) {
-    return [
-      1,
-      "ellipsis-start",
-      total - 4,
-      total - 3,
-      total - 2,
-      total - 1,
-      total,
-    ];
-  }
-  return [1, "ellipsis-start", current - 1, current, current + 1, "ellipsis-end", total];
+  return buildPaginationItems(current, total);
 }
 
 describe("Dokumen Shadcn Pagination Logic", () => {

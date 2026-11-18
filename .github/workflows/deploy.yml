@@ -35,7 +35,8 @@ jobs:
             tests/chat-history.test.ts \
             tests/rag/citation.test.ts \
             tests/rag/evidence.test.ts \
-            tests/rag/regulations.test.ts
+            tests/rag/regulations.test.ts \
+            tests/rag/portal-sync.test.ts
 
   build-and-deploy:
     name: Build Image & Deploy to VPS

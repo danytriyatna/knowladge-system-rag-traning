@@ -30,7 +30,8 @@ export interface PublishedSourceCitation {
   doi: string | null;
   ojs_article_id: number | null;
   article_url: string | null;
-  source: "ojs_harvest" | "manual_upload";
+  source: "ojs_harvest" | "ojs_portal" | "jp_insight_info" | "manual_upload";
+  source_url?: string | null;
   snippet?: string;
 }
 

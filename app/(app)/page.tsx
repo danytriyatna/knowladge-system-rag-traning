@@ -49,7 +49,7 @@ import {
 } from "lucide-react";
 
 type ExtractionMethod = "local" | "gemini";
-type DocumentSource = "ojs_harvest" | "manual_upload";
+type DocumentSource = "ojs_harvest" | "ojs_portal" | "jp_insight_info" | "manual_upload";
 type PageTab = "documents" | "chat" | "regulations" | "gaps" | "skills" | "sync" | "admin";
 type UserRole = "admin" | "unit_user";
 
@@ -79,6 +79,8 @@ interface DocumentSummary {
 
 const SOURCE_LABEL: Record<DocumentSource, string> = {
   ojs_harvest: "Jurnal",
+  ojs_portal: "Portal OJS",
+  jp_insight_info: "JP-Insight",
   manual_upload: "Manual",
 };
 
@@ -97,6 +99,8 @@ interface ChatSource {
   issue_number?: string | null;
   doi?: string | null;
   article_url?: string | null;
+  source?: string;
+  source_url?: string | null;
   snippet?: string;
 }
 
@@ -675,7 +679,7 @@ export default function Home() {
                             </select>
                           </div>
                           <div className="flex gap-1 rounded-full border border-[#D9E1EC] bg-[#F6F9FD] p-0.5">
-                            {(["all", "ojs_harvest", "manual_upload"] as const).map((f) => (
+                            {(["all", "ojs_harvest", "ojs_portal", "jp_insight_info", "manual_upload"] as const).map((f) => (
                               <button
                                 key={f}
                                 onClick={() => setDocSourceFilter(f)}

@@ -45,6 +45,8 @@ CREATE TABLE IF NOT EXISTS public.documents (
   source text DEFAULT 'manual_upload'::text NOT NULL,
   ojs_article_id text,
   synced_at text,
+  source_url text,
+  content_hash text,
   CONSTRAINT documents_pkey PRIMARY KEY (id)
 );
 
@@ -185,6 +187,7 @@ CREATE INDEX IF NOT EXISTS idx_chunks_document_id ON public.chunks USING btree (
 CREATE INDEX IF NOT EXISTS idx_claims_document_id ON public.claims USING btree (document_id);
 CREATE INDEX IF NOT EXISTS idx_claims_jenis ON public.claims USING btree (jenis);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_documents_ojs_article_id ON public.documents USING btree (ojs_article_id) WHERE (ojs_article_id IS NOT NULL);
+CREATE INDEX IF NOT EXISTS idx_documents_source_url ON public.documents USING btree (source, source_url) WHERE (source_url IS NOT NULL);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_embeddings_chunk_id ON public.embeddings USING btree (chunk_id);
 CREATE INDEX IF NOT EXISTS idx_embeddings_document_id ON public.embeddings USING btree (document_id);
 CREATE INDEX IF NOT EXISTS idx_embeddings_vector ON public.embeddings USING hnsw (vector vector_cosine_ops);

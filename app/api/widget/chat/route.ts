@@ -2,13 +2,16 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { embedTexts } from "@/lib/embedding";
-import { searchSimilarChunks, countEmbeddings, type RetrievedChunk } from "@/lib/rag";
+import { searchSimilarChunks, countEmbeddings } from "@/lib/rag";
 import { answerFromContext, logAndDescribeGeminiError } from "@/lib/chat";
-import { NO_SOURCE_ANSWER, validSourceNumbers } from "@/lib/citation";
+import {
+  NO_SOURCE_ANSWER,
+  buildChatSourceCitation,
+  dedupeCitationsByDocument,
+  validSourceNumbers,
+} from "@/lib/citation";
 import { searchPublishedOjsCorpus } from "@/lib/publishedLocal";
-
-const OJS_ARTICLE_BASE =
-  process.env.OJS_ARTICLE_BASE_URL ?? "http://localhost/jurnalpermukiman/index.php/JP/article/view";
+import { resolveOjsArticleBaseUrl } from "@/lib/portalExtract";
 
 export const maxDuration = 60;
 
@@ -17,6 +20,29 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, x-api-key",
 };
+
+function resolveJpInsightPublicOrigin(request: Request): string {
+  const explicit =
+    process.env.JP_INSIGHT_PUBLIC_URL?.trim() ||
+    process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (explicit) {
+    return explicit.replace(/\/+$/, "");
+  }
+
+  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
+  const host = forwardedHost || request.headers.get("host")?.trim();
+  if (host) {
+    const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+    const proto = forwardedProto || (new URL(request.url).protocol.replace(":", "") || "http");
+    return `${proto}://${host}`;
+  }
+
+  try {
+    return new URL(request.url).origin;
+  } catch {
+    return "";
+  }
+}
 
 export async function OPTIONS() {
   return new NextResponse(null, {
@@ -73,13 +99,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // Top-K pencarian hibrida khusus artikel jurnal OJS yang sudah publish
+    // Top-K pencarian hibrida dari sumber publik resmi: artikel terbit OJS, halaman portal OJS, & profil JP-Insight
+    // (dokumen manual_upload internal tetap tidak dibuka ke widget publik)
     const chunks = await searchSimilarChunks(
       queryVector,
       question,
+      8,
       6,
-      4,
-      { source: "ojs_harvest" },
+      { sources: ["ojs_harvest", "ojs_portal", "jp_insight_info"] },
       4,
     );
 
@@ -111,25 +138,14 @@ export async function POST(request: Request) {
       );
     }
 
+    const ojsArticleBase = resolveOjsArticleBaseUrl();
+    const jpInsightOrigin = resolveJpInsightPublicOrigin(request);
     const usedNumbers = new Set(validSourceNumbers(usedSourceNumbers, chunks.length));
-    const sources = chunks
-      .filter((_, i) => usedNumbers.has(i + 1))
-      .map((c: RetrievedChunk) => ({
-        document_id: c.document_id,
-        filename: c.filename,
-        chunk_index: c.chunk_index,
-        similarity: c.similarity,
-        title: c.title || c.filename,
-        authors: c.authors || "",
-        published_year: c.published_year ?? null,
-        volume: c.volume ?? null,
-        issue_number: c.issue_number ?? null,
-        doi: c.doi ?? null,
-        ojs_article_id: c.ojs_article_id ?? null,
-        article_url: c.ojs_article_id ? `${OJS_ARTICLE_BASE}/${c.ojs_article_id}` : null,
-        source: c.source ?? "ojs_harvest",
-        snippet: c.content.slice(0, 200) + (c.content.length > 200 ? "..." : ""),
-      }));
+    const sources = dedupeCitationsByDocument(
+      chunks
+        .filter((_, i) => usedNumbers.has(i + 1))
+        .map((c) => buildChatSourceCitation(c, ojsArticleBase, jpInsightOrigin)),
+    );
 
     const finalAnswer = sources.length === 0 ? NO_SOURCE_ANSWER : rawAnswer;
     const id = randomUUID();

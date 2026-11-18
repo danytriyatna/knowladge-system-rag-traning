@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 
 type ExtractionMethod = "local" | "gemini";
-type DocumentSource = "ojs_harvest" | "manual_upload";
+type DocumentSource = "ojs_harvest" | "ojs_portal" | "jp_insight_info" | "manual_upload";
 type ViewTab = "text" | "pdf" | "chunks" | "embeddings";
 
 interface DocumentDetail {
@@ -37,6 +37,7 @@ interface DocumentDetail {
   doi: string;
   published_year: number | null;
   source: DocumentSource;
+  source_url?: string | null;
 }
 
 interface ChunkItem {
@@ -74,6 +75,8 @@ const METHOD_LABEL: Record<ExtractionMethod, string> = {
 
 const SOURCE_LABEL: Record<DocumentSource, string> = {
   ojs_harvest: "Jurnal",
+  ojs_portal: "Portal OJS",
+  jp_insight_info: "JP-Insight",
   manual_upload: "Manual",
 };
 
@@ -325,6 +328,14 @@ export default function DocumentDetailPage() {
                 </div>
 
                 <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  {document.source_url && (
+                    <Button variant="outline" size="sm" asChild className="gap-1.5 rounded-xl text-xs">
+                      <a href={document.source_url} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4" />
+                        Halaman Sumber
+                      </a>
+                    </Button>
+                  )}
                   <Button variant="outline" size="sm" asChild className="gap-1.5 rounded-xl text-xs">
                     <a href={fileUrl} download>
                       <FileDown className="h-4 w-4" />

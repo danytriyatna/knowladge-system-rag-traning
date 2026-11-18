@@ -23,6 +23,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  buildPaginationItems,
+} from "@/components/ui/pagination";
+import {
   RefreshCw,
   CheckCircle2,
   AlertCircle,
@@ -105,13 +115,40 @@ function formatDuration(sec: number): string {
   return `${mins}m ${remSec}d`;
 }
 
+function formatDateID(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso || "-";
+  const formatted = new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Jakarta",
+  }).format(date);
+  return `${formatted} WIB`;
+}
+
 export default function SyncPanel({ onSynced }: { onSynced?: () => void }) {
   const [runs, setRuns] = useState<SyncRun[] | null>(null);
+  const [runsPage, setRunsPage] = useState(1);
+  const [runsPageSize, setRunsPageSize] = useState(10);
+  const [runsTotal, setRunsTotal] = useState(0);
+  const [runsTotalPages, setRunsTotalPages] = useState(1);
   const [progress, setProgress] = useState<ActiveSyncProgress | null>(null);
   const [running, setRunning] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
+  const [portalRunning, setPortalRunning] = useState(false);
+  const [portalSummary, setPortalSummary] = useState<{
+    created: number;
+    updated: number;
+    skipped: number;
+    failed: number;
+    crawlBaseUrl: string;
+    publicBaseUrl: string;
+  } | null>(null);
 
   // Modal State
   const [modalOpen, setModalOpen] = useState(false);
@@ -122,14 +159,19 @@ export default function SyncPanel({ onSynced }: { onSynced?: () => void }) {
 
   const loadRuns = useCallback(async () => {
     try {
-      const res = await fetch("/api/sync/status");
+      const res = await fetch(`/api/sync/status?page=${runsPage}&limit=${runsPageSize}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Gagal memuat status sinkronisasi");
       setRuns(data.runs ?? []);
+      setRunsTotal(typeof data.total === "number" ? data.total : (data.runs ?? []).length);
+      setRunsTotalPages(typeof data.totalPages === "number" ? Math.max(1, data.totalPages) : 1);
+      if (typeof data.page === "number" && data.page !== runsPage) {
+        setRunsPage(data.page);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal memuat status sinkronisasi");
     }
-  }, []);
+  }, [runsPage, runsPageSize]);
 
   // Cek progress sinkronisasi yang sedang berjalan
   const checkProgress = useCallback(async () => {
@@ -196,6 +238,33 @@ export default function SyncPanel({ onSynced }: { onSynced?: () => void }) {
     }
   }
 
+  // Sinkronkan halaman informasi portal web OJS dan dokumentasi profil JP-Insight
+  async function handleRunPortalSync() {
+    setPortalRunning(true);
+    setError(null);
+    setSuccessNotice(null);
+    setPortalSummary(null);
+
+    try {
+      const res = await fetch("/api/sync/portal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ includePortal: true, includeJpInsightInfo: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Gagal menyinkronkan portal & info JP-Insight");
+      setPortalSummary(data);
+      onSynced?.();
+      setSuccessNotice(
+        `Sinkronisasi info portal & JP-Insight selesai (${data.created} baru, ${data.updated} diperbarui, ${data.skipped} sama, ${data.failed} gagal).`,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal menyinkronkan portal OJS");
+    } finally {
+      setPortalRunning(false);
+    }
+  }
+
   // Batalkan proses sinkronisasi aktif
   async function handleCancelSync() {
     if (!confirm("Apakah Anda yakin ingin membatalkan proses sinkronisasi ini?")) {
@@ -257,6 +326,13 @@ export default function SyncPanel({ onSynced }: { onSynced?: () => void }) {
     });
   }, [modalDetail, modalSearch, modalFilterStatus]);
 
+  const paginationItems = useMemo(
+    () => buildPaginationItems(runsPage, runsTotalPages),
+    [runsPage, runsTotalPages],
+  );
+  const startRunIndex = runsTotal === 0 ? 0 : (runsPage - 1) * runsPageSize + 1;
+  const endRunIndex = Math.min(runsPage * runsPageSize, runsTotal);
+
   return (
     <div className="flex flex-col gap-6">
       {/* Kartu Header Kontrol Sinkronisasi */}
@@ -276,6 +352,44 @@ export default function SyncPanel({ onSynced }: { onSynced?: () => void }) {
           >
             <RefreshCw className={`h-4 w-4 ${running ? "animate-spin" : ""}`} />
             {running ? "Sinkronisasi Berjalan..." : "Jalankan Sinkronisasi Sekarang"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Kartu Sinkronisasi Halaman Portal OJS & Profil JP-Insight */}
+      <Card className="border border-[#D9E1EC] bg-white shadow-xs">
+        <CardContent className="flex flex-wrap items-center justify-between gap-4 p-6">
+          <div className="max-w-2xl">
+            <h3 className="text-base font-bold text-[#0B254B]">
+              Sinkronisasi Portal Web OJS &amp; Profil JP-Insight
+            </h3>
+            <p className="mt-1 text-sm text-[#64748B]">
+              Indeks halaman resmi portal Jurnal Permukiman (kebijakan, panduan submit, APC,
+              editorial, pengumuman) dan dokumentasi resmi JP-Insight agar widget AI dapat
+              menjawab pertanyaan non-artikel dengan rujukan halaman resmi.
+            </p>
+            {portalSummary && (
+              <p className="mt-2 text-xs text-[#475569]">
+                Sumber crawl: <span className="font-mono">{portalSummary.crawlBaseUrl}</span> ·
+                Hasil: <strong>{portalSummary.created} baru</strong>,{" "}
+                <strong>{portalSummary.updated} diperbarui</strong>,{" "}
+                <strong>{portalSummary.skipped} tidak berubah</strong>
+                {portalSummary.failed > 0 ? (
+                  <span className="text-red-600 font-semibold">
+                    {" "}· {portalSummary.failed} gagal
+                  </span>
+                ) : null}
+              </p>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            onClick={handleRunPortalSync}
+            disabled={portalRunning}
+            className="rounded-xl border-[#123B72] px-5 py-2.5 font-semibold text-[#123B72] hover:bg-[#EEF4FC] shadow-xs"
+          >
+            <RefreshCw className={`h-4 w-4 ${portalRunning ? "animate-spin" : ""}`} />
+            {portalRunning ? "Menyinkronkan Portal..." : "Sinkronisasi Info Portal & JP-Insight"}
           </Button>
         </CardContent>
       </Card>
@@ -392,16 +506,46 @@ export default function SyncPanel({ onSynced }: { onSynced?: () => void }) {
 
       {/* Tabel Riwayat Riil Sinkronisasi */}
       <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-[#0B254B]">Riwayat Riil Sinkronisasi</h3>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={loadRuns}
-            className="h-8 gap-1.5 text-xs text-[#123B72] hover:bg-[#EEF4FC]"
-          >
-            <RefreshCw className="h-3.5 w-3.5" /> Segarkan Riwayat
-          </Button>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-bold text-[#0B254B]">Riwayat Riil Sinkronisasi</h3>
+            {runs !== null && runsTotal > 0 && (
+              <span className="text-xs text-[#64748B]">
+                Menampilkan{" "}
+                <strong className="text-[#0B254B]">
+                  {startRunIndex}–{endRunIndex}
+                </strong>{" "}
+                dari <strong className="text-[#0B254B]">{runsTotal}</strong> riwayat
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <label htmlFor="sync-runs-page-size" className="text-xs text-stone-500">
+              Baris:
+            </label>
+            <select
+              id="sync-runs-page-size"
+              value={runsPageSize}
+              onChange={(e) => {
+                setRunsPage(1);
+                setRunsPageSize(Number(e.target.value));
+              }}
+              aria-label="Jumlah riwayat per halaman"
+              className="h-8 rounded-lg border border-[#D9E1EC] bg-[#F6F9FD] px-2 py-1 text-xs font-semibold text-stone-700 outline-none focus:border-[#123B72]"
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+            </select>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void loadRuns()}
+              className="h-8 gap-1.5 text-xs text-[#123B72] hover:bg-[#EEF4FC]"
+            >
+              <RefreshCw className="h-3.5 w-3.5" /> Segarkan Riwayat
+            </Button>
+          </div>
         </div>
 
         {runs === null && <p className="text-sm text-[#64748B]">Memuat riwayat...</p>}
@@ -425,7 +569,7 @@ export default function SyncPanel({ onSynced }: { onSynced?: () => void }) {
               {runs.map((run) => (
                 <TableRow key={run.id}>
                   <TableCell className="font-medium whitespace-nowrap">
-                    {new Date(run.started_at).toLocaleString("id-ID")}
+                    {formatDateID(run.started_at)}
                   </TableCell>
                   <TableCell>
                     <Badge variant={STATUS_CONFIG[run.status]?.variant ?? "default"}>
@@ -453,6 +597,48 @@ export default function SyncPanel({ onSynced }: { onSynced?: () => void }) {
             </TableBody>
           </Table>
         )}
+
+        {runs && runs.length > 0 && runsTotalPages > 1 && (
+          <div className="flex flex-col items-center justify-between gap-3 rounded-xl border border-[#D9E1EC] bg-white p-3.5 shadow-xs sm:flex-row">
+            <p className="text-xs text-stone-500">
+              Halaman <span className="font-bold text-stone-800">{runsPage}</span> dari{" "}
+              <span className="font-bold text-stone-800">{runsTotalPages}</span> · Total{" "}
+              <span className="font-bold text-stone-800">{runsTotal}</span> riwayat
+            </p>
+            <Pagination className="mx-0 w-auto justify-end">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setRunsPage((prev) => Math.max(1, prev - 1))}
+                    disabled={runsPage <= 1}
+                  />
+                </PaginationItem>
+                {paginationItems.map((item) =>
+                  typeof item === "string" ? (
+                    <PaginationItem key={item}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  ) : (
+                    <PaginationItem key={item}>
+                      <PaginationLink
+                        isActive={runsPage === item}
+                        onClick={() => setRunsPage(item)}
+                      >
+                        {item}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ),
+                )}
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => setRunsPage((prev) => Math.min(runsTotalPages, prev + 1))}
+                    disabled={runsPage >= runsTotalPages}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        )}
       </div>
 
       {/* MODAL DIALOG: Rincian Naskah & Penulis per Run */}
@@ -469,7 +655,7 @@ export default function SyncPanel({ onSynced }: { onSynced?: () => void }) {
                   <span>
                     Dimulai pada:{" "}
                     <strong>
-                      {new Date(modalDetail.startedAt).toLocaleString("id-ID")}
+                      {formatDateID(modalDetail.startedAt)}
                     </strong>
                   </span>
                   <span>· Status:</span>

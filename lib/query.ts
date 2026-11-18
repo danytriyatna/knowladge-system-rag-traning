@@ -18,6 +18,28 @@ export function isNormativeQuestion(question: string): boolean {
   return NORMATIVE_MARKERS.test(question);
 }
 
+const ASSISTANT_IDENTITY_PATTERNS: RegExp[] = [
+  /\b(?:siapa(?:\s+(?:sih|nih|ya|itu|ini))?\s+(?:kamu|anda|kau|engkau|dirimu|namamu|bot(?:\s+ini)?|asisten(?:\s+ini)?))\b/i,
+  /\b(?:(?:kamu|anda|dirimu|asisten(?:\s+ini)?|bot(?:\s+ini)?)\s+(?:ini\s+)?siapa)\b/i,
+  /\b(?:(?:kamu|anda|bot(?:\s+ini)?|asisten(?:\s+ini)?)\s+(?:ini\s+)?apa)\b/i,
+  /\b(?:apa\s+(?:tugas|fungsi|peran|kegunaan|kemampuan)(?:mu|\s+(?:kamu|anda|asisten|bot)))\b/i,
+  /\b(?:(?:kamu|anda)\s+(?:bisa|dapat)\s+(?:bantu|melakukan)\s+apa)\b/i,
+  /\b(?:perkenalkan|kenalkan)\s+diri(?:mu|\s+(?:kamu|anda))?\b/i,
+  /\b(?:ceritakan\s+)?tentang\s+(?:kamu|anda|dirimu)\b/i,
+  /\b(?:who\s+are\s+you|what\s+are\s+you|introduce\s+yourself|tell\s+me\s+about\s+yourself)\b/i,
+];
+
+/**
+ * Mengenali pertanyaan perkenalan atau identitas asisten (mis. "siapa kamu?",
+ * "siapa anda?", "apa tugasmu?") agar sistem menarik profil resmi JP-Insight
+ * tanpa memicu pertanyaan riset seperti "siapa penulis artikel...".
+ */
+export function isAssistantIdentityQuestion(question: string): boolean {
+  const normalized = question.trim();
+  if (!normalized) return false;
+  return ASSISTANT_IDENTITY_PATTERNS.some((pattern) => pattern.test(normalized));
+}
+
 /**
  * Sinonim & singkatan yang lazim dipakai bergantian di naskah bidang PU.
  * Tanpa ini, pertanyaan yang memakai istilah panjang tidak pernah bertemu
@@ -41,6 +63,20 @@ const DOMAIN_SYNONYMS: Record<string, string[]> = {
   rth: ["ruang terbuka hijau"],
   "efisiensi energi": ["konservasi energi", "penghematan energi", "OTTV"],
   drainase: ["zero run off", "limpasan"],
+  "biaya submit": ["article processing charge", "apc", "gratis", "publikasi", "biaya"],
+  "biaya publikasi": ["article processing charge", "apc", "gratis"],
+  apc: ["article processing charge", "biaya publikasi", "biaya submit"],
+  "daftar akun": ["registration", "register", "registrasi", "jurnalpermukiman@pu.go.id"],
+  "cara daftar": ["registration", "register", "registrasi", "jurnalpermukiman@pu.go.id"],
+  registrasi: ["registration", "register", "daftar akun"],
+  "panduan submit": ["author guidelines", "submissions", "panduan penulis", "hak cipta", "copyright"],
+  "submit naskah": ["submissions", "author guidelines", "panduan penulis", "copyright"],
+  "jp-insight": ["insight", "asisten cerdas", "sistem pengetahuan", "jurnal permukiman"],
+  "jp insight": ["jp-insight", "insight", "asisten cerdas"],
+  mqc: ["manuscript quality check", "gaya selingkung", "pra-telaah"],
+  "ruang lingkup": ["aims and scope", "focus and scope", "fokus"],
+  "etika publikasi": ["publication ethics", "plagiarism", "retraction"],
+  review: ["peer review", "kebijakan review", "mitra bestari"],
 };
 
 /**
@@ -54,6 +90,10 @@ export function expandQueryTerms(question: string): string {
 
   for (const [term, synonyms] of Object.entries(DOMAIN_SYNONYMS)) {
     if (lower.includes(term)) extras.push(...synonyms);
+  }
+
+  if (isAssistantIdentityQuestion(question)) {
+    extras.push("JP-Insight", "asisten cerdas", "sistem pengetahuan", "profil resmi");
   }
 
   if (extras.length === 0) return question;

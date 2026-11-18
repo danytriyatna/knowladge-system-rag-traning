@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
-import { sql, type DocumentRecord, type ExtractionMethod } from "@/lib/db";
+import { sql, ensureDocumentPortalSchema, type DocumentRecord, type ExtractionMethod } from "@/lib/db";
 import { uploadPdf } from "@/lib/storage";
 import { extractText, getPageCount } from "@/lib/pdf";
 import { extractTextWithGemini } from "@/lib/gemini";
@@ -29,9 +29,10 @@ export async function GET() {
     });
   }
 
+  await ensureDocumentPortalSchema().catch(() => {});
   const documents = await sql`
     SELECT id, filename, extraction_method, page_count, uploaded_at,
-           title, authors, doi, published_year, volume, issue_number, topics, source
+           title, authors, doi, published_year, volume, issue_number, topics, source, source_url
     FROM documents ORDER BY uploaded_at DESC
   `;
   return NextResponse.json({ documents });

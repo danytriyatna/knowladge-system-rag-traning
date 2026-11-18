@@ -26,7 +26,7 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 export type ExtractionMethod = "local" | "gemini";
-export type DocumentSource = "ojs_harvest" | "manual_upload";
+export type DocumentSource = "ojs_harvest" | "ojs_portal" | "jp_insight_info" | "manual_upload";
 
 export interface DocumentRecord {
   id: string;
@@ -47,6 +47,31 @@ export interface DocumentRecord {
   source: DocumentSource;
   ojs_article_id: string | null;
   synced_at: string | null;
+  source_url?: string | null;
+  content_hash?: string | null;
+}
+
+let portalSchemaReadyPromise: Promise<void> | null = null;
+
+/**
+ * Menjamin kolom aditif untuk sumber portal & JP-Insight (source_url, content_hash)
+ * tersedia secara idempoten pada basis data yang sudah berjalan tanpa migrasi manual.
+ */
+export async function ensureDocumentPortalSchema(): Promise<void> {
+  if (portalSchemaReadyPromise) return portalSchemaReadyPromise;
+
+  portalSchemaReadyPromise = (async () => {
+    try {
+      await sql`ALTER TABLE public.documents ADD COLUMN IF NOT EXISTS source_url text`;
+      await sql`ALTER TABLE public.documents ADD COLUMN IF NOT EXISTS content_hash text`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_documents_source_url ON public.documents USING btree (source, source_url) WHERE (source_url IS NOT NULL)`;
+    } catch (err) {
+      portalSchemaReadyPromise = null;
+      throw err;
+    }
+  })();
+
+  return portalSchemaReadyPromise;
 }
 
 export interface SyncRunRecord {

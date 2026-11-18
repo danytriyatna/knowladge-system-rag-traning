@@ -1,6 +1,10 @@
-import { sql } from "./db";
+import { sql, ensureDocumentPortalSchema, type DocumentSource } from "./db";
 import { vectorToPgLiteral } from "./embedding";
-import { isNormativeQuestion, expandQueryTerms } from "./query";
+import {
+  isNormativeQuestion,
+  isAssistantIdentityQuestion,
+  expandQueryTerms,
+} from "./query";
 
 export const MIN_SEMANTIC_SIMILARITY = 0.35;
 
@@ -19,12 +23,14 @@ export interface RetrievedChunk {
   doi?: string;
   ojs_article_id?: number | null;
   source?: string;
+  source_url?: string | null;
 }
 
 export interface SearchFilters {
   year?: number;
   topics?: string[];
-  source?: "ojs_harvest" | "manual_upload";
+  source?: DocumentSource;
+  sources?: DocumentSource[];
 }
 
 interface ChunkRow {
@@ -42,6 +48,7 @@ interface ChunkRow {
   doi?: string;
   ojs_article_id?: number | null;
   source?: string;
+  source_url?: string | null;
 }
 
 // Kata umum Bahasa Indonesia yang dibuang dari query pencarian kata kunci
@@ -72,7 +79,12 @@ function escapeLike(value: string): string {
 /** Fragmen WHERE tambahan untuk filter dokumen (tahun, tema) — kosong kalau tidak difilter. */
 function buildDocumentFilter(filters: SearchFilters | undefined) {
   const yearFragment = filters?.year ? sql`AND d.published_year = ${filters.year}` : sql``;
-  const sourceFragment = filters?.source ? sql`AND d.source = ${filters.source}` : sql``;
+  const sourceFragment =
+    filters?.sources && filters.sources.length > 0
+      ? sql`AND d.source IN ${sql(filters.sources)}`
+      : filters?.source
+        ? sql`AND d.source = ${filters.source}`
+        : sql``;
 
   let topicFragment = sql``;
   if (filters?.topics && filters.topics.length > 0) {
@@ -125,7 +137,7 @@ async function searchKeyword(
   try {
     return await sql<ChunkRow[]>`
       SELECT c.id, c.document_id, d.filename, c.chunk_index, c.content,
-             d.title, d.authors, d.published_year, d.volume, d.issue_number, d.doi, d.ojs_article_id, d.source,
+             d.title, d.authors, d.published_year, d.volume, d.issue_number, d.doi, d.ojs_article_id, d.source, d.source_url,
              1 - (e.vector <=> ${queryVectorLiteral}::vector) AS similarity
       FROM chunks c
       JOIN documents d ON d.id = c.document_id
@@ -160,7 +172,7 @@ async function searchRegulation(
   try {
     return await sql<ChunkRow[]>`
       SELECT c.id, c.document_id, d.filename, c.chunk_index, c.content,
-             d.title, d.authors, d.published_year, d.volume, d.issue_number, d.doi, d.ojs_article_id, d.source,
+             d.title, d.authors, d.published_year, d.volume, d.issue_number, d.doi, d.ojs_article_id, d.source, d.source_url,
              1 - (e.vector <=> ${queryVectorLiteral}::vector) AS similarity,
              COUNT(m.id) AS mention_count
       FROM chunks c
@@ -169,8 +181,50 @@ async function searchRegulation(
       JOIN embeddings e ON e.chunk_id = c.id
       WHERE c.document_id IN ${sql(documentIds)}
       GROUP BY c.id, c.document_id, d.filename, c.chunk_index, c.content,
-               d.title, d.authors, d.published_year, d.volume, d.issue_number, d.doi, d.ojs_article_id, d.source, e.vector
+               d.title, d.authors, d.published_year, d.volume, d.issue_number, d.doi, d.ojs_article_id, d.source, d.source_url, e.vector
       ORDER BY mention_count DESC, c.chunk_index ASC
+      LIMIT ${limit}
+    `;
+  } catch {
+    return [];
+  }
+}
+
+function allowsJpInsightInfo(filters?: SearchFilters): boolean {
+  if (filters?.sources && filters.sources.length > 0) {
+    return filters.sources.includes("jp_insight_info");
+  }
+  if (filters?.source) {
+    return filters.source === "jp_insight_info";
+  }
+  return true;
+}
+
+/**
+ * Mengambil bagian profil resmi JP-Insight untuk pertanyaan perkenalan
+ * asisten ("siapa kamu?", "siapa anda?") saat korpus jp_insight_info diizinkan.
+ */
+async function searchAssistantProfile(
+  queryVectorLiteral: string,
+  limit: number,
+  filters?: SearchFilters
+): Promise<ChunkRow[]> {
+  if (!allowsJpInsightInfo(filters)) return [];
+  const filterFragment = buildDocumentFilter({
+    year: filters?.year,
+    topics: filters?.topics,
+    source: "jp_insight_info",
+  });
+  try {
+    return await sql<ChunkRow[]>`
+      SELECT c.id, e.document_id, d.filename, c.chunk_index, c.content,
+             d.title, d.authors, d.published_year, d.volume, d.issue_number, d.doi, d.ojs_article_id, d.source, d.source_url,
+             1 - (e.vector <=> ${queryVectorLiteral}::vector) AS similarity
+      FROM embeddings e
+      JOIN chunks c ON c.id = e.chunk_id
+      JOIN documents d ON d.id = e.document_id
+      WHERE 1=1 ${filterFragment}
+      ORDER BY c.chunk_index ASC
       LIMIT ${limit}
     `;
   } catch {
@@ -194,6 +248,7 @@ function toRetrieved(row: ChunkRow, matchedBy: RetrievedChunk["matchedBy"]): Ret
     doi: row.doi,
     ojs_article_id: row.ojs_article_id ?? null,
     source: row.source,
+    source_url: row.source_url ?? null,
   };
 }
 
@@ -212,6 +267,7 @@ export async function searchSimilarChunks(
   filters?: SearchFilters,
   regulationK = 5
 ): Promise<RetrievedChunk[]> {
+  await ensureDocumentPortalSchema().catch(() => {});
   const queryVectorLiteral = vectorToPgLiteral(queryVector);
 
   const semanticRows = (await searchSemantic(queryVectorLiteral, semanticK, filters)).filter(
@@ -245,8 +301,26 @@ export async function searchSimilarChunks(
     }
   }
 
+  const assistantIdentity = isAssistantIdentityQuestion(question);
+  if (assistantIdentity && allowsJpInsightInfo(filters)) {
+    const profileRows = await searchAssistantProfile(queryVectorLiteral, 4, filters);
+    for (const row of profileRows) {
+      if (!merged.has(row.id)) merged.set(row.id, { id: row.id, ...toRetrieved(row, "keyword") });
+    }
+  }
+
   return Array.from(merged.values())
-    .sort((a, b) => b.similarity - a.similarity)
+    .sort((a, b) => {
+      if (assistantIdentity) {
+        const aInfo = a.source === "jp_insight_info" ? 1 : 0;
+        const bInfo = b.source === "jp_insight_info" ? 1 : 0;
+        if (aInfo !== bInfo) return bInfo - aInfo;
+        if (aInfo === 1 && bInfo === 1 && a.chunk_index !== b.chunk_index) {
+          return a.chunk_index - b.chunk_index;
+        }
+      }
+      return b.similarity - a.similarity;
+    })
     .map((chunk) => ({
       document_id: chunk.document_id,
       filename: chunk.filename,
@@ -262,6 +336,7 @@ export async function searchSimilarChunks(
       doi: chunk.doi,
       ojs_article_id: chunk.ojs_article_id,
       source: chunk.source,
+      source_url: chunk.source_url ?? null,
     }));
 }
 

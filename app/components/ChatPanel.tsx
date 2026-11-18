@@ -79,6 +79,8 @@ export interface ChatSource {
   issue_number?: string | null;
   doi?: string | null;
   article_url?: string | null;
+  source?: string;
+  source_url?: string | null;
   snippet?: string;
 }
 
@@ -556,14 +558,17 @@ export default function ChatPanel({
                                                   >
                                                     {s.title || s.filename}
                                                   </Link>
-                                                  {s.article_url && (
+                                                  {(s.article_url || s.source_url) && (
                                                     <a
-                                                      href={s.article_url}
+                                                      href={s.source_url || s.article_url || "#"}
                                                       target="_blank"
                                                       rel="noopener noreferrer"
                                                       className="inline-flex items-center gap-0.5 font-bold text-[#123B72] hover:underline"
                                                     >
-                                                      OJS <ExternalLink className="h-2.5 w-2.5" />
+                                                      {s.source === "ojs_portal" || s.source === "jp_insight_info"
+                                                        ? "Portal"
+                                                        : "OJS"}{" "}
+                                                      <ExternalLink className="h-2.5 w-2.5" />
                                                     </a>
                                                   )}
                                                 </div>
@@ -585,13 +590,28 @@ export default function ChatPanel({
                                   <TraceCard defaultOpen={true}>
                                     <TraceCardHeader
                                       icon={<BookOpen className="h-4 w-4 text-[#123B72]" />}
-                                      title="Referensi Jurnal Terbit OJS"
+                                      title={
+                                        message.sources.some(
+                                          (s) =>
+                                            s.source === "ojs_portal" ||
+                                            s.source === "jp_insight_info",
+                                        )
+                                          ? "Referensi Sumber Resmi"
+                                          : "Referensi Jurnal Terbit OJS"
+                                      }
                                       badge={
                                         <Badge
                                           variant="secondary"
                                           className="px-2 py-0.5 text-[10px]"
                                         >
-                                          {message.sources.length} Naskah
+                                          {message.sources.length}{" "}
+                                          {message.sources.some(
+                                            (s) =>
+                                              s.source === "ojs_portal" ||
+                                              s.source === "jp_insight_info",
+                                          )
+                                            ? "Sumber"
+                                            : "Naskah"}
                                         </Badge>
                                       }
                                     />
@@ -631,14 +651,18 @@ export default function ChatPanel({
                                                 >
                                                   [{j + 1}] {source.title || source.filename}
                                                 </Link>
-                                                {source.article_url && (
+                                                {(source.article_url || source.source_url) && (
                                                   <a
-                                                    href={source.article_url}
+                                                    href={source.source_url || source.article_url || "#"}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="inline-flex shrink-0 items-center gap-0.5 text-[11px] font-bold text-[#123B72] hover:underline"
                                                   >
-                                                    OJS <ExternalLink className="h-2.5 w-2.5" />
+                                                    {source.source === "ojs_portal" ||
+                                                    source.source === "jp_insight_info"
+                                                      ? "Portal"
+                                                      : "OJS"}{" "}
+                                                    <ExternalLink className="h-2.5 w-2.5" />
                                                   </a>
                                                 )}
                                               </div>

@@ -8,7 +8,7 @@ export interface PublicPortalUrls {
 }
 
 const DEFAULT_PORTAL_URLS: PublicPortalUrls = {
-  ojsPublicUrl: "http://localhost/jurnalpermukiman/index.php/JP",
+  ojsPublicUrl: "http://localhost:8000/index.php/JP",
   mqcPublicUrl: "http://localhost:3000/dashboard",
 };
 

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
+import { resolvePortalUrls } from "@/lib/portalExtract";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const ojsPublicUrl =
-    process.env.OJS_PUBLIC_URL?.trim() || "http://localhost/jurnalpermukiman/index.php/JP";
+  const { publicBaseUrl: ojsPublicUrl } = resolvePortalUrls();
   const mqcPublicUrl =
     process.env.MQC_PUBLIC_URL?.trim() || "http://localhost:3000/dashboard";
 

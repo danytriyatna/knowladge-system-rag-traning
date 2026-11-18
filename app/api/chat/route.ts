@@ -15,11 +15,14 @@ import {
   logAndDescribeGeminiError,
 } from "@/lib/chat";
 import { evidenceStrengthFor, combineWeakestLink } from "@/lib/evidence";
-import { NO_SOURCE_ANSWER, validSourceNumbers } from "@/lib/citation";
+import {
+  NO_SOURCE_ANSWER,
+  buildChatSourceCitation,
+  dedupeCitationsByDocument,
+  validSourceNumbers,
+} from "@/lib/citation";
 import { searchPublishedOjsCorpus, type PublishedSourceCitation } from "@/lib/publishedLocal";
-
-const OJS_ARTICLE_BASE =
-  process.env.OJS_ARTICLE_BASE_URL ?? "http://localhost/jurnalpermukiman/index.php/JP/article/view";
+import { resolveOjsArticleBaseUrl } from "@/lib/portalExtract";
 
 export const maxDuration = 60;
 
@@ -48,8 +51,14 @@ function toCitation(chunk: RetrievedChunk): SourceCitation {
     issue_number: chunk.issue_number ?? null,
     doi: chunk.doi ?? null,
     ojs_article_id: chunk.ojs_article_id ?? null,
-    article_url: chunk.ojs_article_id ? `${OJS_ARTICLE_BASE}/${chunk.ojs_article_id}` : null,
-    source: chunk.source === "manual_upload" ? "manual_upload" : "ojs_harvest",
+    article_url: chunk.ojs_article_id ? `${resolveOjsArticleBaseUrl()}/${chunk.ojs_article_id}` : null,
+    source:
+      chunk.source === "manual_upload" ||
+      chunk.source === "ojs_portal" ||
+      chunk.source === "jp_insight_info"
+        ? chunk.source
+        : "ojs_harvest",
+    source_url: chunk.source_url ?? null,
     snippet: chunk.content.slice(0, 200) + (chunk.content.length > 200 ? "..." : ""),
   };
 }
@@ -71,7 +80,11 @@ export async function POST(request: Request) {
 
   const filters: SearchFilters = {};
   if (body?.publishedOnly !== false) {
-    filters.source = "ojs_harvest";
+    if (mode === "kajian") {
+      filters.source = "ojs_harvest";
+    } else {
+      filters.sources = ["ojs_harvest", "ojs_portal", "jp_insight_info"];
+    }
   }
   if (typeof body?.filters?.year === "number") filters.year = body.filters.year;
   if (Array.isArray(body?.filters?.topics)) {
@@ -255,8 +268,13 @@ export async function POST(request: Request) {
   // Hanya tampilkan sumber yang benar-benar dipakai Gemini untuk menjawab —
   // pencarian kemiripan bisa saja mengembalikan chunk yang mirip skornya
   // tapi topiknya tidak relevan.
+  const ojsArticleBase = resolveOjsArticleBaseUrl();
   const usedNumbers = new Set(validSourceNumbers(usedSourceNumbers, chunks.length));
-  const sources = chunks.filter((_, i) => usedNumbers.has(i + 1)).map(toCitation);
+  const sources = dedupeCitationsByDocument(
+    chunks
+      .filter((_, i) => usedNumbers.has(i + 1))
+      .map((c) => buildChatSourceCitation(c, ojsArticleBase))
+  );
 
   // Pagar terakhir: jawaban tanpa satu pun sumber tidak boleh sampai ke
   // pengguna. Teks model dibuang dan diganti pesan baku — kalau model memang
