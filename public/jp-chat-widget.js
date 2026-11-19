@@ -1,6 +1,17 @@
 (function () {
-  if (window.__JP_CHAT_WIDGET_LOADED__) return;
-  window.__JP_CHAT_WIDGET_LOADED__ = true;
+  const WIDGET_VERSION = "20261118_callout2";
+  if (window.__JP_CHAT_WIDGET_LOADED__ === WIDGET_VERSION) return;
+  if (typeof window.__JP_CHAT_WIDGET_CLEANUP__ === "function") {
+    try {
+      window.__JP_CHAT_WIDGET_CLEANUP__();
+    } catch (_e) {
+      // abaikan error pembersihan versi lama
+    }
+  }
+  document
+    .querySelectorAll(".jp-widget-fab, .jp-widget-window, .jp-widget-callout, #jp-widget-styles")
+    .forEach((el) => el.remove());
+  window.__JP_CHAT_WIDGET_LOADED__ = WIDGET_VERSION;
 
   const currentScript = document.currentScript || (function() {
     const scripts = document.getElementsByTagName('script');
@@ -71,6 +82,75 @@
     }
     .jp-widget-fab.jp-widget-fab-hidden {
       display: none !important;
+    }
+    .jp-widget-callout {
+      position: fixed;
+      bottom: 132px;
+      right: 24px;
+      z-index: 999998;
+      width: max-content;
+      max-width: min(268px, calc(100vw - 32px));
+      background: #ffffff;
+      color: #1C1917;
+      border: 1px solid #C7D8EE;
+      border-radius: 16px;
+      border-bottom-right-radius: 4px;
+      padding: 12px 15px;
+      box-shadow: 0 10px 26px rgba(15, 44, 89, 0.16);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      display: none;
+      cursor: pointer;
+      animation: jpWidgetFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+    .jp-widget-callout.is-visible {
+      display: block;
+    }
+    .jp-widget-callout:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 30px rgba(15, 44, 89, 0.22);
+    }
+    .jp-widget-callout-close {
+      position: absolute !important;
+      top: -7px !important;
+      right: -7px !important;
+      width: 22px !important;
+      height: 22px !important;
+      border-radius: 9999px !important;
+      border: 1px solid #D9E1EC !important;
+      background: #ffffff !important;
+      color: #64748B !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      cursor: pointer !important;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+      line-height: 1 !important;
+    }
+    .jp-widget-callout-close svg {
+      width: 12px;
+      height: 12px;
+      display: block;
+      pointer-events: none;
+    }
+    .jp-widget-callout-close:hover {
+      color: #123B72 !important;
+      background: #EEF4FC !important;
+    }
+    .jp-widget-callout-title {
+      margin: 0 0 3px 0;
+      font-size: 13.5px;
+      font-weight: 700;
+      line-height: 1.3;
+      color: #0B254B;
+    }
+    .jp-widget-callout-desc {
+      margin: 0;
+      font-size: 12px;
+      line-height: 1.45;
+      color: #475569;
     }
     .jp-widget-header-logo {
       width: 28px;
@@ -560,6 +640,11 @@
         height: calc(100vh - 16px);
         border-radius: 12px;
       }
+      .jp-widget-callout {
+        bottom: 122px;
+        right: 16px;
+        max-width: min(252px, calc(100vw - 32px));
+      }
     }
   `;
   document.head.appendChild(style);
@@ -604,17 +689,22 @@
     <span class="jp-widget-fab-label">JP Insight</span>
   `;
   document.body.appendChild(fab);
+  let callout = null;
 
   function positionFabInRightGutter() {
     const ojsPage = document.querySelector(".pkp_structure_page");
-    if (!ojsPage) return;
-    const rect = ojsPage.getBoundingClientRect();
-    const rightGutter = document.documentElement.clientWidth - rect.right;
-    const fabW = fab.offsetWidth || 82;
-    if (rightGutter >= fabW + 24) {
-      fab.style.right = Math.round((rightGutter - fabW) / 2) + "px";
-    } else {
-      fab.style.right = "24px";
+    let rightOffset = "24px";
+    if (ojsPage) {
+      const rect = ojsPage.getBoundingClientRect();
+      const rightGutter = document.documentElement.clientWidth - rect.right;
+      const fabW = fab.offsetWidth || 82;
+      if (rightGutter >= fabW + 24) {
+        rightOffset = Math.round((rightGutter - fabW) / 2) + "px";
+      }
+    }
+    fab.style.right = rightOffset;
+    if (callout) {
+      callout.style.right = rightOffset;
     }
   }
   positionFabInRightGutter();
@@ -652,6 +742,54 @@
     </form>
   `;
   document.body.appendChild(win);
+
+  // Balon Callout Ajakan di atas Maskot
+  const CALLOUT_DISMISS_KEY = "jp_insight_widget_callout_closed_v1";
+  callout = document.createElement("div");
+  callout.className = "jp-widget-callout";
+  callout.setAttribute("role", "dialog");
+  callout.setAttribute("aria-label", "Have a research question? Ask JP-Insight");
+  callout.innerHTML = `
+    <button type="button" class="jp-widget-callout-close" aria-label="Tutup ajakan">${ICON_CLOSE}</button>
+    <p class="jp-widget-callout-title">Have a research question?</p>
+    <p class="jp-widget-callout-desc">Ask JP-Insight. Answers are drawn from articles published in Jurnal Permukiman.</p>
+  `;
+  document.body.appendChild(callout);
+  if (fab.style.right) {
+    callout.style.right = fab.style.right;
+  }
+
+  const calloutCloseBtn = callout.querySelector(".jp-widget-callout-close");
+  let calloutTimer = null;
+
+  function isCalloutDismissed() {
+    const store = getSessionStorageSafe();
+    if (!store) return false;
+    try {
+      return store.getItem(CALLOUT_DISMISS_KEY) === "1";
+    } catch (_e) {
+      return false;
+    }
+  }
+
+  function hideCallout() {
+    if (calloutTimer) {
+      clearTimeout(calloutTimer);
+      calloutTimer = null;
+    }
+    callout.classList.remove("is-visible");
+  }
+
+  function dismissCallout() {
+    hideCallout();
+    const store = getSessionStorageSafe();
+    if (!store) return;
+    try {
+      store.setItem(CALLOUT_DISMISS_KEY, "1");
+    } catch (_e) {
+      // abaikan error akses storage
+    }
+  }
 
   const resetBtn = win.querySelector(".jp-widget-reset");
   const minimizeBtn = win.querySelector(".jp-widget-minimize");
@@ -773,6 +911,9 @@
     win.classList.toggle("is-minimized", isOpen && isMinimized);
     win.classList.toggle("is-maximized", isOpen && isMaximized && !isMinimized);
     fab.classList.toggle("jp-widget-fab-hidden", isOpen && (isMinimized || isMaximized));
+    if (isOpen) {
+      callout.classList.remove("is-visible");
+    }
 
     minimizeBtn.setAttribute(
       "aria-label",
@@ -830,6 +971,7 @@
   }
 
   function openWidget() {
+    hideCallout();
     isOpen = true;
     isMinimized = false;
     renderWindowState();
@@ -876,6 +1018,19 @@
       openWidget();
     }
   });
+  callout.addEventListener("click", function (e) {
+    if (e.target && e.target.closest && e.target.closest(".jp-widget-callout-close")) {
+      return;
+    }
+    dismissCallout();
+    openWidget();
+  });
+  if (calloutCloseBtn) {
+    calloutCloseBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      dismissCallout();
+    });
+  }
   resetBtn.addEventListener("click", function (e) {
     e.stopPropagation();
     resetConversation();
@@ -899,12 +1054,25 @@
       inputEl.focus();
     }
   });
-  document.addEventListener("keydown", function (e) {
+  function onDocumentKeyDown(e) {
     if (e.key === "Escape" && isOpen && isMaximized) {
       isMaximized = false;
       renderWindowState();
     }
-  });
+  }
+  document.addEventListener("keydown", onDocumentKeyDown);
+
+  window.__JP_CHAT_WIDGET_CLEANUP__ = function () {
+    if (calloutTimer) clearTimeout(calloutTimer);
+    if (revealTimer) clearInterval(revealTimer);
+    window.removeEventListener("resize", positionFabInRightGutter);
+    window.removeEventListener("load", positionFabInRightGutter);
+    document.removeEventListener("keydown", onDocumentKeyDown);
+    if (style && style.parentNode) style.parentNode.removeChild(style);
+    if (fab && fab.parentNode) fab.parentNode.removeChild(fab);
+    if (win && win.parentNode) win.parentNode.removeChild(win);
+    if (callout && callout.parentNode) callout.parentNode.removeChild(callout);
+  };
 
   inputEl.addEventListener("input", autoResizeInput);
   inputEl.addEventListener("keydown", function (e) {
@@ -1420,6 +1588,14 @@
   }
 
   restoreSessionOnBoot();
+
+  if (!isOpen && !isCalloutDismissed()) {
+    calloutTimer = setTimeout(() => {
+      if (!isOpen && !isCalloutDismissed()) {
+        callout.classList.add("is-visible");
+      }
+    }, 900);
+  }
 
   formEl.addEventListener("submit", async function (e) {
     e.preventDefault();
