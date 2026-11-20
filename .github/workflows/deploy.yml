@@ -33,6 +33,7 @@ jobs:
             tests/pagination.test.ts \
             tests/ai-elements-chat.test.ts \
             tests/chat-history.test.ts \
+            tests/widget-guard.test.ts \
             tests/rag/citation.test.ts \
             tests/rag/evidence.test.ts \
             tests/rag/regulations.test.ts \

@@ -12,14 +12,14 @@ import {
 } from "@/lib/citation";
 import { searchPublishedOjsCorpus } from "@/lib/publishedLocal";
 import { resolveOjsArticleBaseUrl } from "@/lib/portalExtract";
+import {
+  MAX_WIDGET_BODY_BYTES,
+  checkWidgetRateLimit,
+  evaluateWidgetCors,
+  validateWidgetQuestion,
+} from "@/lib/widgetGuard";
 
 export const maxDuration = 60;
-
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, x-api-key",
-};
 
 function resolveJpInsightPublicOrigin(request: Request): string {
   const explicit =
@@ -44,24 +44,61 @@ function resolveJpInsightPublicOrigin(request: Request): string {
   }
 }
 
-export async function OPTIONS() {
+export async function OPTIONS(request: Request) {
+  const cors = evaluateWidgetCors(request);
+  if (!cors.allowed) {
+    return NextResponse.json(
+      { error: "Origin tidak diizinkan mengakses layanan widget ini." },
+      { status: 403, headers: cors.headers },
+    );
+  }
   return new NextResponse(null, {
     status: 204,
-    headers: CORS_HEADERS,
+    headers: cors.headers,
   });
 }
 
 export async function POST(request: Request) {
+  const cors = evaluateWidgetCors(request);
+  if (!cors.allowed) {
+    return NextResponse.json(
+      { error: "Origin tidak diizinkan mengakses layanan widget ini." },
+      { status: 403, headers: cors.headers },
+    );
+  }
+
+  const rateLimit = checkWidgetRateLimit(request);
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: rateLimit.message },
+      {
+        status: 429,
+        headers: {
+          ...cors.headers,
+          "Retry-After": String(rateLimit.retryAfterSeconds),
+        },
+      },
+    );
+  }
+
+  const contentLength = Number(request.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > MAX_WIDGET_BODY_BYTES) {
+    return NextResponse.json(
+      { error: "Ukuran permintaan terlalu besar." },
+      { status: 413, headers: cors.headers },
+    );
+  }
+
   try {
     const body = await request.json().catch(() => null);
-    const question = typeof body?.question === "string" ? body.question.trim() : "";
-
-    if (!question) {
+    const validated = validateWidgetQuestion(body?.question);
+    if (!validated.ok) {
       return NextResponse.json(
-        { error: "Pertanyaan tidak boleh kosong" },
-        { status: 400, headers: CORS_HEADERS },
+        { error: validated.error },
+        { status: validated.status, headers: cors.headers },
       );
     }
+    const question = validated.question;
 
     const embeddingCount = await countEmbeddings().catch(() => 0);
 
@@ -78,14 +115,14 @@ export async function POST(request: Request) {
             grounded: localResult.grounded,
             created_at,
           },
-          { status: 200, headers: CORS_HEADERS },
+          { status: 200, headers: cors.headers },
         );
       }
       return NextResponse.json(
         {
           error: "Korpus naskah belum diindeks. Hubungi administrator sistem.",
         },
-        { status: 422, headers: CORS_HEADERS },
+        { status: 422, headers: cors.headers },
       );
     }
 
@@ -95,7 +132,7 @@ export async function POST(request: Request) {
     } catch {
       return NextResponse.json(
         { error: "Gagal memproses pertanyaan (embedding lokal tidak merespon)" },
-        { status: 500, headers: CORS_HEADERS },
+        { status: 500, headers: cors.headers },
       );
     }
 
@@ -117,7 +154,7 @@ export async function POST(request: Request) {
           sources: [],
           grounded: false,
         },
-        { status: 200, headers: CORS_HEADERS },
+        { status: 200, headers: cors.headers },
       );
     }
 
@@ -134,7 +171,7 @@ export async function POST(request: Request) {
       );
       return NextResponse.json(
         { error: message },
-        { status, headers: CORS_HEADERS },
+        { status, headers: cors.headers },
       );
     }
 
@@ -169,10 +206,10 @@ export async function POST(request: Request) {
         grounded: sources.length > 0,
         created_at,
       },
-      { status: 200, headers: CORS_HEADERS },
+      { status: 200, headers: cors.headers },
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Terjadi kesalahan internal";
-    return NextResponse.json({ error: message }, { status: 500, headers: CORS_HEADERS });
+    return NextResponse.json({ error: message }, { status: 500, headers: cors.headers });
   }
 }
